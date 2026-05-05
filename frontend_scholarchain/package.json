@@ -3,16 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint",
-    "test": "vitest"
+    "lint": "next lint"
   },
   "dependencies": {
-    "@meshsdk/core": "^1.9.0-beta.102",
-    "@meshsdk/react": "^2.0.0-beta.2",
-    "@meshsdk/wallet": "^2.0.0-beta.9",
+    "@meshsdk/core": "^1.7.4",
+    "@meshsdk/react": "^1.7.4",
+    "libsodium-wrappers": "^0.7.11",
+    "libsodium-wrappers-sumo": "^0.7.11",
+    "lucide-react": "^1.14.0",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -21,14 +22,17 @@
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
+    "@types/libsodium-wrappers": "^0.7.14",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.1",
+    "autoprefixer": "^10.5.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "jsdom": "^29.1.1",
-    "tailwindcss": "^4",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^4.2.4",
     "typescript": "^5",
     "vitest": "^4.1.5"
   }
