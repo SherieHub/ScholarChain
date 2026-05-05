@@ -92,7 +92,7 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '@meshsdk/react';
 
 export const useWalletConnection = () => {
-    const { wallet, connected, connecting, name, disconnect, error } = useWallet();
+    const {wallet, connected, connecting, name, disconnect, error } = useWallet();
     const [address, setAddress] = useState<string | null>(null);
     const [balance, setBalance] = useState<string | null>(null);
 
