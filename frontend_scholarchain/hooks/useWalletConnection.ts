@@ -1,12 +1,12 @@
 /**
  * useWalletConnection Hook
- * 
+ *
  * LOCATION: hooks/useWalletConnection.ts
- * 
+ *
  * PURPOSE:
  * Wraps the 'useWallet' hook from MeshJS to provide a unified interface for the application.
  * It manages connection status, wallet metadata (address, balance), and loading states.
- * 
+ *
  * IMPLEMENTATION INSTRUCTIONS:
  * 1. Import 'useWallet' from '@meshsdk/react'.
  * 2. Initialize the hook at the top level of your function:
@@ -16,13 +16,13 @@
  *    - Address: Call 'wallet.getUsedAddresses()'.
  *    - Balance: Call 'wallet.getBalance()'.
  * 5. Handle potential errors during fetching with a 'try/catch' block.
- * 
+ *
  * FLOW:
  * - On component mount, 'useWallet()' is initialized and connects to the nearest 'MeshProvider'.
  * - It reactively listens to the global wallet state (e.g., when a user connects via CardanoWallet button).
  * - When 'connected' transitions to 'true', the hook triggers local 'useEffect' logic to hydrate address and balance.
  * - Provides the 'wallet' instance required for signing transactions in 'lib/mesh/sendAda.ts'.
- * 
+ *
  * RETURN VALUE:
  * An object containing:
  * - wallet: The BrowserWallet instance (for transaction signing).
@@ -32,7 +32,7 @@
  * - balance: The current ADA balance in Lovelaces or ADA.
  * - name: The name of the wallet extension (e.g., 'Eternl').
  * - disconnect: Function to manually terminate the connection.
- * 
+ *
  * STEP-BY-STEP IMPLEMENTATION FLOW:
  * 1. INITIALIZATION: Call the base 'useWallet' hook to access the underlying MeshJS state machine.
  * 2. LOCAL STATE: Initialize React state variables to hold the 'address' and 'balance' which aren't provided reactively by the base hook.
@@ -41,16 +41,16 @@
  * 5. ERROR BOUNDARY: Wrap the async calls in a try/catch to prevent UI crashes if the wallet extension fails to respond.
  * 6. STATE SYNC: Update the local state with the results. If 'connected' becomes false, clear the local state to ensure security and UI consistency.
  * 7. EXPOSURE: Return a consolidated object that merges the base MeshJS state with your hydrated data.
- * 
+ *
  * PSEUDOCODE:
  * ```
  * FUNCTION useWalletConnection() {
  *    // Access MeshJS base states
  *    BASE_STATE = CALL useWallet()
- * 
+ *
  *    // Setup local storage for data we need to fetch manually
  *    STATE [address, balance, loading]
- * 
+ *
  *    // Watch for connection changes
  *    EFFECT (whenever BASE_STATE.connected changes) {
  *       IF (BASE_STATE.connected is TRUE) {
@@ -59,7 +59,7 @@
  *             // Request data from the wallet extension
  *             addresses = AWAIT BASE_STATE.wallet.getUsedAddresses()
  *             lovelaces = AWAIT BASE_STATE.wallet.getBalance()
- *             
+ *
  *             // Update local state
  *             SET address = addresses[0]
  *             SET balance = lovelaces
@@ -74,7 +74,7 @@
  *          SET balance = NULL
  *       }
  *    }
- * 
+ *
  *    // Return unified interface
  *    RETURN {
  *       ...BASE_STATE,
@@ -101,7 +101,7 @@ export const useWalletConnection = () => {
             if (connected && wallet) {
                 try {
                     const addresses = await wallet.getUsedAddresses();
-                    const lovelace = await wallet.getBalance();
+                    const lovelace = await wallet.getLovelace();
                     setAddress(addresses[0]);
                     setBalance(lovelace);
                 } catch (e) {
@@ -127,4 +127,3 @@ export const useWalletConnection = () => {
         error
     };
 };
-
