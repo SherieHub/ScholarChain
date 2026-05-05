@@ -23,14 +23,13 @@ function shortenAddr(addr: string) {
 }
 
 export default function WalletModal() {
-  const { connect, connected, name: connectedName, disconnect, wallet } =
-    useWallet();
+  const { connect, connected, name: connectedName, disconnect } = useWallet();
   const [modalState, setModalState] = useState<ModalState>("idle");
   const [wallets, setWallets] = useState<WalletInfo[]>([]);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [verifyAddress, setVerifyAddress] = useState<string>("");
 
-  // Load available wallet extensions once
+  // Load available wallet extensions once on mount
   useEffect(() => {
     import("@meshsdk/core").then(({ BrowserWallet }) => {
       BrowserWallet.getAvailableWallets().then((w) =>
@@ -49,60 +48,76 @@ export default function WalletModal() {
     return () => window.removeEventListener("keydown", handler);
   }, [modalState]);
 
-  // When connection completes while modal is open → move to verification screen
-  useEffect(() => {
-    if (!connected || !wallet || modalState !== "selecting") return;
-    const fetchAndVerify = async () => {
-      try {
-        const addr = await wallet.getChangeAddress();
-        setVerifyAddress(addr);
-      } catch {
-        setVerifyAddress("(address unavailable)");
-      }
-      setModalState("verifying");
-    };
-    fetchAndVerify();
-  }, [connected, wallet, modalState]);
-
   const handleConnect = async (walletName: string) => {
     setConnecting(walletName);
     try {
+      // Step 1: connect via MeshJS (updates global wallet context)
       await connect(walletName);
-      // modalState transitions handled by the useEffect above
+
+      // Step 2: get a fresh BrowserWallet instance to read the address immediately.
+      // We can't rely on useWallet()'s `wallet` ref here because React state
+      // updates are async — BrowserWallet.enable() gives us the live instance now.
+      const { BrowserWallet } = await import("@meshsdk/core");
+      const bw = await BrowserWallet.enable(walletName);
+
+      // Step 3: fetch address (fall back to change address for new wallets)
+      const used = await bw.getUsedAddresses();
+      const addr =
+        used.length > 0 ? used[0] : await bw.getChangeAddress();
+
+      setVerifyAddress(addr);
+      setModalState("verifying");
     } catch {
-      // user rejected or wallet error — stay on selecting screen
+      // User rejected or wallet error — stay on the selecting screen
+      setModalState("selecting");
     } finally {
       setConnecting(null);
     }
   };
 
-  const handleDisconnectAndRetry = async () => {
-    await disconnect();
+  const handleDisconnectAndRetry = () => {
     setVerifyAddress("");
     setModalState("selecting");
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = () => setModalState("idle");
+
+  const handleDisconnect = () => {
+    disconnect();
     setModalState("idle");
   };
 
-  const handleDisconnect = async () => {
-    await disconnect();
-    setModalState("idle");
-  };
-
-  // ── Connected badge (idle + connected) ──────────────────────────────────
+  // ── Connected badge (idle + already connected) ───────────────────────────
   if (modalState === "idle" && connected) {
     return (
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-1.5 text-sm">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
-          <span className="text-slate-300 capitalize">{connectedName}</span>
+        {/* Connected status pill */}
+        <div
+          className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm backdrop-blur-sm"
+          style={{
+            background: "rgba(2,6,23,0.7)",
+            border: "1px solid rgba(52,211,153,0.3)",
+            boxShadow: "0 0 12px rgba(52,211,153,0.1)",
+          }}
+        >
+          {/* Pulsing green dot */}
+          <span className="relative flex items-center justify-center w-2.5 h-2.5">
+            <span
+              className="absolute inline-flex w-full h-full rounded-full bg-emerald-400"
+              style={{ animation: "dot-ping 1.8s ease-out infinite" }}
+            />
+            <span className="relative w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+          </span>
+          <span className="text-emerald-300 font-medium text-xs capitalize">
+            {connectedName}
+          </span>
         </div>
+
+        {/* Disconnect button */}
         <button
           onClick={handleDisconnect}
           title="Disconnect wallet"
-          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-200 text-xs border border-white/[0.06] hover:border-white/[0.14] rounded-xl px-2.5 py-1.5 transition-all"
+          className="flex items-center gap-1.5 text-slate-500 hover:text-red-400 text-xs border border-white/[0.06] hover:border-red-500/30 rounded-xl px-2.5 py-1.5 transition-all duration-200 hover:bg-red-500/5"
         >
           <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
           Disconnect
@@ -116,11 +131,37 @@ export default function WalletModal() {
     return (
       <button
         onClick={() => setModalState("selecting")}
-        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-xl transition-all shadow-[0_0_16px_rgba(59,130,246,0.25)] hover:shadow-[0_0_24px_rgba(59,130,246,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+        className="relative overflow-hidden flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-300 hover:scale-[1.05] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+        style={{
+          background:
+            "linear-gradient(135deg, #1d4ed8 0%, #4f46e5 40%, #7c3aed 70%, #1d4ed8 100%)",
+          backgroundSize: "300% 300%",
+          animation: "gradient-x 4s ease infinite, btn-glow 2.5s ease-in-out infinite",
+          border: "1px solid rgba(255,255,255,0.15)",
+        }}
+        aria-label="Open wallet connection modal"
       >
-        <Wallet className="w-4 h-4" aria-hidden="true" />
-        Connect Wallet
-        <ChevronDown className="w-3.5 h-3.5 opacity-70" aria-hidden="true" />
+        {/* Shimmer sweep */}
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              "linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.14) 50%, transparent 65%)",
+            animation: "shimmer-sweep 3s ease-in-out infinite",
+          }}
+        />
+
+        <Wallet
+          className="relative w-4 h-4"
+          style={{ animation: "icon-float 2.2s ease-in-out infinite" }}
+          aria-hidden="true"
+        />
+        <span className="relative">Connect Wallet</span>
+        <ChevronDown
+          className="relative w-3.5 h-3.5 opacity-70"
+          aria-hidden="true"
+        />
       </button>
     );
   }
@@ -140,7 +181,8 @@ export default function WalletModal() {
 
       {/* Modal card */}
       <div className="relative z-10 w-full max-w-sm bg-slate-900 border border-white/[0.10] rounded-2xl shadow-2xl p-6 flex flex-col gap-4">
-        {/* ── SELECTING state ─────────────────────────── */}
+
+        {/* ── SELECTING ─────────────────────────────── */}
         {modalState === "selecting" && (
           <>
             <div className="flex items-center justify-between">
@@ -191,7 +233,7 @@ export default function WalletModal() {
                       className="w-full flex items-center gap-3 bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-blue-500/30 rounded-xl px-4 py-3 transition-all group disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                     >
                       {w.icon ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={w.icon}
                           alt={w.name}
@@ -225,7 +267,7 @@ export default function WalletModal() {
           </>
         )}
 
-        {/* ── VERIFYING state ─────────────────────────── */}
+        {/* ── VERIFYING ─────────────────────────────── */}
         {modalState === "verifying" && (
           <>
             <div className="flex items-center justify-between">
@@ -241,7 +283,6 @@ export default function WalletModal() {
               </button>
             </div>
 
-            {/* Success indicator */}
             <div className="flex flex-col items-center gap-3 py-2">
               <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(52,211,153,0.2)]">
                 <CheckCircle className="w-7 h-7 text-emerald-400" />
@@ -251,12 +292,11 @@ export default function WalletModal() {
                   {connectedName} Connected
                 </p>
                 <p className="text-slate-500 text-xs mt-0.5">
-                  Verify this is the correct account
+                  Verify this is the correct account before proceeding
                 </p>
               </div>
             </div>
 
-            {/* Address display */}
             <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4">
               <p className="text-slate-500 text-xs uppercase tracking-wide mb-1.5">
                 Connected Address
@@ -274,7 +314,6 @@ export default function WalletModal() {
               )}
             </div>
 
-            {/* Action buttons */}
             <div className="flex flex-col gap-2">
               <button
                 onClick={handleConfirm}

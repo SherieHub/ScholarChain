@@ -14,7 +14,17 @@ export default function WalletConnectButton() {
 
   if (!meshReady) {
     return (
-      <div className="w-36 h-9 rounded-lg bg-white/[0.04] border border-white/[0.06] animate-pulse" />
+      <div
+        className="flex items-center gap-2 px-5 py-2.5 rounded-xl animate-pulse"
+        style={{
+          background:
+            "linear-gradient(135deg,rgba(29,78,216,0.25),rgba(79,70,229,0.25))",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        <div className="w-4 h-4 rounded-full bg-white/20" />
+        <div className="w-24 h-3 rounded-full bg-white/20" />
+      </div>
     );
   }
 

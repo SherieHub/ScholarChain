@@ -48,7 +48,7 @@ export default function AdminDashboard() {
         <BackButton />
 
         <div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent mb-1">
+          <h1 className="text-3xl font-bold text-gradient-animated mb-1">
             Admin Dashboard
           </h1>
           <p className="text-slate-500 text-sm">ScholarChain · Preprod Testnet</p>

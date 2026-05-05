@@ -20,7 +20,7 @@ export default function Header() {
 
         <Link
           href="/"
-          className="text-lg font-bold bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
+          className="text-lg font-bold text-gradient-animated shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
         >
           ScholarChain
         </Link>
