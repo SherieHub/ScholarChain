@@ -7,23 +7,32 @@ import SuccessMessage from "@/components/ui/SuccessMessage";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import BackButton from "@/components/ui/BackButton";
-// import WalletStatus from "@/components/wallet/WalletStatus"; // uncomment when Austine's Task A-03 is merged
+import { sendADA } from "@/mesh/sendAda";
 
 type TxState = "idle" | "processing" | "success" | "error";
 
 export default function AdminDashboard() {
-  const { connected } = useWalletConnection();
+  const { connected, wallet } = useWalletConnection();
   const [txState, setTxState] = useState<TxState>("idle");
   const [txHash, setTxHash] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
 
   // STUB — Replace with Christian's sendADA() in Task C-03
   const handleSend = async (address: string, amount: number) => {
-    console.log("Sending", amount, "ADA to", address);
+    if (!wallet) return; // Safety check
+    
     setTxState("processing");
-    await new Promise((r) => setTimeout(r, 3000));
-    setTxHash("mock_txhash_abc123def456");
-    setTxState("success");
+    setErrorMsg("");
+    
+    try {
+      // Converting amount to string for the blockchain transaction
+      const hash = await sendADA(wallet, address, amount.toString()); 
+      setTxHash(hash);
+      setTxState("success");
+    } catch (err: any) {
+      setErrorMsg(err?.message ?? "An unexpected error occurred.");
+      setTxState("error");
+    }
   };
 
   const resetTx = () => {
