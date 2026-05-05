@@ -5,9 +5,11 @@ import SendScholarshipForm from "@/components/forms/SendScholarshipForm";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import SuccessMessage from "@/components/ui/SuccessMessage";
 import ErrorMessage from "@/components/ui/ErrorMessage";
-import { useWalletConnection } from "@/hooks/useWalletConnection";
 import BackButton from "@/components/ui/BackButton";
-import { sendADA } from "@/mesh/sendAda";
+import { useWalletConnection } from "@/hooks/useWalletConnection";
+import { sendADA } from "@/lib/mesh/sendAda";
+import { parseTxError } from "@/lib/mesh/errorHandler";
+import WalletStatus from "@/components/wallet/WalletStatus";
 
 type TxState = "idle" | "processing" | "success" | "error";
 
@@ -17,20 +19,16 @@ export default function AdminDashboard() {
   const [txHash, setTxHash] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
 
-  // STUB — Replace with Christian's sendADA() in Task C-03
   const handleSend = async (address: string, amount: number) => {
-    if (!wallet) return; // Safety check
-    
+    if (!wallet) return;
     setTxState("processing");
     setErrorMsg("");
-    
     try {
-      // Converting amount to string for the blockchain transaction
-      const hash = await sendADA(wallet, address, amount.toString()); 
+      const hash = await sendADA(wallet, address, amount.toString());
       setTxHash(hash);
       setTxState("success");
-    } catch (err: any) {
-      setErrorMsg(err?.message ?? "An unexpected error occurred.");
+    } catch (err: unknown) {
+      setErrorMsg(parseTxError(err));
       setTxState("error");
     }
   };
@@ -56,7 +54,7 @@ export default function AdminDashboard() {
           <p className="text-slate-500 text-sm">ScholarChain · Preprod Testnet</p>
         </div>
 
-        {/* <WalletStatus /> — uncomment when Austine's Task A-03 is merged */}
+        <WalletStatus />
 
         {!connected && (
           <div

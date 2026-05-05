@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Providers from "./providers";
+import Header from "@/components/layout/Header";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,7 +17,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
         <Providers>
-          {children}
+          <Header />
+          <div className="flex flex-col flex-1">
+            {children}
+          </div>
         </Providers>
       </body>
     </html>

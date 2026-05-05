@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+
+// Shared signal: true only after MeshProvider is mounted and ready.
+// WalletConnectButton reads this before rendering CardanoWallet.
+const MeshReadyContext = createContext(false);
+export const useMeshReady = () => useContext(MeshReadyContext);
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
   const [MeshProvider, setMeshProvider] = useState<React.ComponentType<{ children: React.ReactNode }> | null>(null);
 
   useEffect(() => {
-    setMounted(true);
     const initMesh = async () => {
       // libsodium WASM must be fully initialized before any MeshJS module
       // loads, because @cardano-sdk/crypto calls sodium functions at module level.
@@ -19,9 +22,17 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     initMesh();
   }, []);
 
-  if (!mounted || MeshProvider === null) {
-    return <>{children}</>;
+  if (MeshProvider === null) {
+    return (
+      <MeshReadyContext.Provider value={false}>
+        {children}
+      </MeshReadyContext.Provider>
+    );
   }
 
-  return <MeshProvider>{children}</MeshProvider>;
+  return (
+    <MeshReadyContext.Provider value={true}>
+      <MeshProvider>{children}</MeshProvider>
+    </MeshReadyContext.Provider>
+  );
 }
