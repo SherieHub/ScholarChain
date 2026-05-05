@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Send } from "lucide-react";
 
 interface SendScholarshipFormProps {
   onSubmit: (recipientAddress: string, adaAmount: number) => Promise<void>;
@@ -39,50 +40,57 @@ export default function SendScholarshipForm({
   const isDisabled = isLoading || !isConnected || !recipientAddress || !adaAmount;
 
   return (
-    <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 max-w-lg w-full mx-auto">
-      <h2 className="text-xl font-semibold text-white mb-5">Send Scholarship Payment</h2>
+    <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-2xl p-6 w-full">
+      <h2 className="text-lg font-semibold text-white mb-5">Send Scholarship Payment</h2>
 
-      {!isConnected && (
-        <p className="text-yellow-400 text-sm mb-4">
-          Please connect your wallet to send scholarships.
-        </p>
-      )}
-
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Recipient Wallet Address</label>
+          <label htmlFor="recipient-address" className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wide">
+            Recipient Wallet Address
+          </label>
           <input
+            id="recipient-address"
             type="text"
             placeholder="addr_test1..."
             value={recipientAddress}
             onChange={(e) => setRecipientAddress(e.target.value)}
-            className="w-full bg-gray-800 text-white border border-gray-600 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+            autoComplete="off"
+            aria-describedby={validationError ? "form-error" : undefined}
+            className="w-full bg-white/[0.04] text-white border border-white/[0.10] rounded-xl px-4 py-2.5 text-sm placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500/40 transition-colors"
           />
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-1">ADA Amount</label>
+          <label htmlFor="ada-amount" className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wide">
+            ADA Amount
+          </label>
           <input
+            id="ada-amount"
             type="number"
             placeholder="e.g. 50"
             min="1"
             step="1"
             value={adaAmount}
             onChange={(e) => setAdaAmount(e.target.value)}
-            className="w-full bg-gray-800 text-white border border-gray-600 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+            aria-describedby={validationError ? "form-error" : undefined}
+            className="w-full bg-white/[0.04] text-white border border-white/[0.10] rounded-xl px-4 py-2.5 text-sm placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500/40 transition-colors"
           />
         </div>
 
         {validationError && (
-          <p className="text-red-400 text-xs">{validationError}</p>
+          <p id="form-error" role="alert" className="text-red-400 text-xs">
+            {validationError}
+          </p>
         )}
 
         <button
           type="submit"
           disabled={isDisabled}
-          className="bg-brand hover:bg-brand-dark text-white font-medium py-2 px-6 rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed"
+          aria-disabled={isDisabled}
+          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-6 rounded-xl transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 shadow-[0_0_20px_rgba(59,130,246,0.25)] hover:shadow-[0_0_28px_rgba(59,130,246,0.4)]"
         >
-          {isLoading ? "Sending..." : "Send Scholarship →"}
+          <Send className="w-4 h-4" aria-hidden="true" />
+          {isLoading ? "Sending..." : "Send Scholarship"}
         </button>
       </form>
     </div>

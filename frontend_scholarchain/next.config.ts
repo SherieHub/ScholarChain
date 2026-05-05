@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: path.join(__dirname, ".."),
   serverExternalPackages: [
     "@meshsdk/core",
     "@meshsdk/react",
@@ -22,6 +24,29 @@ const nextConfig: NextConfig = {
       asyncWebAssembly: true,
       layers: true,
     };
+
+    // The ESM builds of both libsodium packages reference missing .mjs files.
+    // Alias both to their working CJS builds.
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      "libsodium-wrappers-sumo": path.resolve(
+        __dirname,
+        "node_modules/libsodium-wrappers-sumo/dist/modules-sumo/libsodium-wrappers.js"
+      ),
+      "libsodium-wrappers": path.resolve(
+        __dirname,
+        "node_modules/libsodium-wrappers/dist/modules/libsodium-wrappers.js"
+      ),
+    };
+
+    // Suppress the async/await WASM warning from sidan-lab (MeshJS internal)
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings ?? []),
+      (warning: { message: string }) =>
+        warning.message?.includes("sidan_csl_rs_bg.wasm") ||
+        warning.message?.includes("async/await"),
+    ];
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -32,8 +57,6 @@ const nextConfig: NextConfig = {
       config.externals = [
         ...(Array.isArray(config.externals) ? config.externals : []),
         "@sidan-lab/sidan-csl-rs-browser",
-        "libsodium-wrappers-sumo",
-        "libsodium-wrappers",
       ];
     }
     return config;

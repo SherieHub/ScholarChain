@@ -8,9 +8,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMounted(true);
-    import("@meshsdk/react").then((mod) => {
+    const initMesh = async () => {
+      // libsodium WASM must be fully initialized before any MeshJS module
+      // loads, because @cardano-sdk/crypto calls sodium functions at module level.
+      const sodium = await import("libsodium-wrappers");
+      await sodium.ready;
+      const mod = await import("@meshsdk/react");
       setMeshProvider(() => mod.MeshProvider);
-    });
+    };
+    initMesh();
   }, []);
 
   if (!mounted || MeshProvider === null) {
