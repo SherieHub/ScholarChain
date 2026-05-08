@@ -11,6 +11,7 @@
   "dependencies": {
     "@meshsdk/core": "^1.9.0-beta.102",
     "@meshsdk/react": "^2.0.0-beta.2",
+    "firebase": "^12.13.0",
     "libsodium-wrappers": "^0.7.11",
     "libsodium-wrappers-sumo": "^0.7.11",
     "lucide-react": "^1.14.0",
