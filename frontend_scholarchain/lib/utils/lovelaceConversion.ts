@@ -1,23 +1,24 @@
 /**
- * Lovelace Conversion Utilities
- * 
- * LOCATION: lib/utils/lovelaceConversion.ts
- * 
- * PURPOSE:
- * Provides helper functions to convert between ADA and Lovelaces.
- * 
- * IMPLEMENTATION INSTRUCTIONS:
- * 1. Implement 'adaToLovelace(ada: string | number): string'.
- *    - Multiply by 1,000,000 and return as a rounded string.
- * 2. Implement 'lovelaceToAda(lovelace: string | number): string'.
- *    - Divide by 1,000,000 and return as a formatted string with 2 decimals.
- * 
- * FLOW:
- * - Pure utility functions used by the transaction logic and UI.
- * 
- * RETURN VALUE:
- * Formatted strings representing the converted amounts.
+ * Converts a human-readable ADA amount (float) to an integer Lovelace string.
+ * Cardano protocol requires integer Lovelaces — no decimals are accepted.
+ *
+ * @param ada - Human-readable ADA value entered by the Admin (e.g., 50)
+ * @returns Lovelace string suitable for MeshJS Transaction (e.g., "50000000")
+ * @throws Error if input is not a valid positive number
  */
+export function adaToLovelace(ada: string | number): string {
+  const parsed = Number(ada);
+  if (isNaN(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ADA amount: "${ada}". Must be a positive number.`);
+  }
+  return String(Math.round(parsed * 1_000_000));
+}
 
-// Implementation would follow
-export {};
+/**
+ * Converts a raw Lovelace integer (from Blockfrost/MeshJS) to a readable ADA string.
+ * @param lovelace - Raw Lovelace value (e.g., 50000000)
+ * @returns Formatted ADA string (e.g., "50.00")
+ */
+export function lovelaceToAda(lovelace: number | string): string {
+  return (Number(lovelace) / 1_000_000).toFixed(2);
+}

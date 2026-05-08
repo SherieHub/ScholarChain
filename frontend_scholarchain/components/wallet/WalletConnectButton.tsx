@@ -1,26 +1,32 @@
-/**
- * WalletConnectButton Component
- * 
- * LOCATION: components/wallet/WalletConnectButton.tsx
- * 
- * PURPOSE:
- * A UI wrapper around the MeshJS '<CardanoWallet />' component.
- * This is the entry point for users to authenticate with their Cardano wallet.
- * 
- * IMPLEMENTATION INSTRUCTIONS:
- * 1. Import 'CardanoWallet' from '@meshsdk/react'.
- * 2. Return the 'CardanoWallet' component.
- * 3. Customize labels (e.g., label="Connect Wallet") via props if desired.
- * 4. Place this component in 'components/layout/Header.tsx'.
- * 
- * FLOW:
- * - When clicked, MeshJS opens a modal listing compatible wallet extensions.
- * - Once a wallet is selected and approved, the MeshProvider context updates globally.
- * - This triggers 'useWalletConnection' to fetch user details.
- * 
- * RETURN VALUE:
- * A React JSX Element (The MeshJS wallet connection button).
- */
+"use client";
 
-// Implementation would follow using @meshsdk/react
-export {};
+import dynamic from "next/dynamic";
+import { useMeshReady } from "@/app/providers";
+
+// WalletModal imports useWallet + @meshsdk/core — must never run server-side
+const WalletModal = dynamic(
+  () => import("@/components/wallet/WalletModal"),
+  { ssr: false }
+);
+
+export default function WalletConnectButton() {
+  const meshReady = useMeshReady();
+
+  if (!meshReady) {
+    return (
+      <div
+        className="flex items-center gap-2 px-5 py-2.5 rounded-xl animate-pulse"
+        style={{
+          background:
+            "linear-gradient(135deg,rgba(29,78,216,0.25),rgba(79,70,229,0.25))",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}
+      >
+        <div className="w-4 h-4 rounded-full bg-white/20" />
+        <div className="w-24 h-3 rounded-full bg-white/20" />
+      </div>
+    );
+  }
+
+  return <WalletModal />;
+}
