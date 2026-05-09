@@ -81,8 +81,8 @@ export default function ScholarApplicationForm() {
 
   // --- FORM STATE UI ---
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-sm border border-gray-100">
-      <h2 className="text-2xl font-bold mb-6">Scholar Application</h2>
+    <div className="max-w-md mx-auto p-6 bg-black/50 backdrop-blur-md rounded-xl shadow-lg border border-gray-800">
+      <h2 className="text-white text-xl font-bold mb-3">Scholar Application</h2>
       
       {formState === "error" && (
         <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">
@@ -93,7 +93,7 @@ export default function ScholarApplicationForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         
         <div>
-          <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-1">Full Name</label>
           <input
             id="name"
             type="text"
@@ -101,7 +101,7 @@ export default function ScholarApplicationForm() {
             minLength={3}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-5 px-3 py-2 bg-black/40 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600"
             placeholder="John Doe"
             disabled={formState === "submitting"}
           />
@@ -109,14 +109,14 @@ export default function ScholarApplicationForm() {
 
         
         <div>
-          <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-1">Course / Degree Program</label>
+          <label htmlFor="course" className="block text-sm font-medium text-gray-300 mb-1">Course / Degree Program</label>
           <input
             id="course"
             type="text"
             required
             value={course}
             onChange={(e) => setCourse(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-5 px-3 py-2 bg-black/40 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600"
             placeholder="e.g., BS Computer Science"
             disabled={formState === "submitting"}
           />
@@ -124,18 +124,18 @@ export default function ScholarApplicationForm() {
 
         
         <div>
-          <label htmlFor="walletAddress" className="block text-sm font-medium text-gray-700 mb-1">Cardano Preprod Wallet Address</label>
+          <label htmlFor="walletAddress" className="block text-sm font-medium text-gray-300 mb-1">Cardano Preprod Wallet Address</label>
           <input
             id="walletAddress"
             type="text"
             required
             value={walletAddress}
             onChange={(e) => setWalletAddress(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+            className="w-full pl-5 px-3 py-2 bg-black/40 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600"
             placeholder="addr_test1..."
             disabled={formState === "submitting"}
           />
-          <p className="mt-2 text-xs text-gray-500">
+          <p className="text-xs text-gray-500 mt-2">
             Don't have a Cardano wallet? Install the{' '}
             <a href="https://eternl.io/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
               Eternl browser extension
@@ -148,7 +148,7 @@ export default function ScholarApplicationForm() {
         <button
           type="submit"
           disabled={formState === "submitting"}
-          className="w-full bg-blue-600 text-white font-medium py-2 px-4 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="w-full bg-indigo-600 text-white font-medium py-2.5 px-4 mt-4 rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50"
         >
           {formState === "submitting" ? "Submitting..." : "Apply Now"}
         </button>

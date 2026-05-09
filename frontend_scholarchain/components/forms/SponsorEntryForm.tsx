@@ -64,22 +64,22 @@ export default function SponsorEntryForm() {
   // --- SUCCESS STATE UI ---
   if (formState === "success") {
     return (
-      <div className="p-6 max-w-md mx-auto bg-green-50 border border-green-200 rounded-lg text-center shadow-sm">
-        <h2 className="text-2xl font-bold text-green-800 mb-2">Pledge Confirmed! 🎉</h2>
-        <p className="text-green-700 mb-4">
-          Thank you, <strong>{sponsorName}</strong>, for your generous support!
+      <div className="p-6 max-w-md mx-auto bg-black/50 backdrop-blur-md border border-green-800/50 rounded-lg text-center shadow-lg">
+        <h2 className="text-2xl font-bold text-green-400 mb-2">Pledge Confirmed! 🎉</h2>
+        <p className="text-gray-300 mb-4">
+          Thank you, <strong className="text-white">{sponsorName}</strong>, for your generous support!
         </p>
-        <div className="bg-white rounded p-4 mb-4 border border-green-100">
-          <p className="text-sm text-gray-500 uppercase tracking-wide">Pledged Amount</p>
-          <p className="text-3xl font-bold text-green-600">₳ {Number(pledgeAmount).toLocaleString()}</p>
+        <div className="bg-black/40 rounded-lg p-4 mb-4 border border-green-900/50">
+          <p className="text-sm text-gray-400 uppercase tracking-wide">Pledged Amount</p>
+          <p className="text-3xl font-bold text-green-400">₳ {Number(pledgeAmount).toLocaleString()}</p>
         </div>
         {/* Required Transparency Note */}
-        <p className="text-xs text-gray-600 italic mb-6">
+        <p className="text-xs text-gray-500 italic mb-6">
           "This pledge amount will appear in the ScholarChain Public Transparency Dashboard."
         </p>
         <button 
           onClick={resetForm}
-          className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
+          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-500 transition-colors"
         >
           Enter Another Pledge
         </button>
@@ -89,22 +89,22 @@ export default function SponsorEntryForm() {
 
   // --- FORM STATE UI ---
   return (
-    <div className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-sm border border-gray-100">
-      <h2 className="text-2xl font-bold mb-2">Sponsor Pledge Entry</h2>
-      <p className="text-gray-600 text-sm mb-6">
+    <div className="max-w-md mx-auto p-6 bg-black/50 backdrop-blur-md rounded-xl shadow-lg border border-gray-800">
+      <h2 className="text-white text-xl font-bold mb-2">Sponsor Pledge Entry</h2>
+      <p className="text-gray-400 text-sm mb-6">
         Register a new sponsor and their committed ADA amount.
       </p>
       
       {formState === "error" && (
-        <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded border border-red-200">
+        <div className="mb-4 p-3 bg-red-900/30 text-red-400 text-sm rounded-lg border border-red-800/50">
           {errorMessage}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {/* Sponsor Name */}
         <div>
-          <label htmlFor="sponsorName" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="sponsorName" className="block text-sm font-medium text-gray-300 mb-1">
             Sponsor Name (Individual or Organization)
           </label>
           <input
@@ -113,7 +113,7 @@ export default function SponsorEntryForm() {
             required
             value={sponsorName}
             onChange={(e) => setSponsorName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 bg-black/40 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600"
             placeholder="e.g., Ada Lovelace Foundation"
             disabled={formState === "submitting"}
           />
@@ -121,7 +121,7 @@ export default function SponsorEntryForm() {
 
         {/* Pledge Amount */}
         <div>
-          <label htmlFor="pledgeAmount" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="pledgeAmount" className="block text-sm font-medium text-gray-300 mb-1">
             Pledge Amount (ADA)
           </label>
           <div className="relative">
@@ -136,7 +136,7 @@ export default function SponsorEntryForm() {
               step="1" // Forces the browser to only allow whole numbers
               value={pledgeAmount}
               onChange={(e) => setPledgeAmount(e.target.value)}
-              className="w-full pl-8 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-8 px-3 py-2 bg-black/40 border border-gray-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 placeholder-gray-600"
               placeholder="1000"
               disabled={formState === "submitting"}
             />
@@ -152,7 +152,7 @@ export default function SponsorEntryForm() {
         <button
           type="submit"
           disabled={formState === "submitting"}
-          className="w-full bg-blue-600 text-white font-medium py-2 px-4 mt-4 rounded hover:bg-blue-700 transition-colors disabled:opacity-50"
+          className="w-full bg-indigo-600 text-white font-medium py-2.5 px-4 mt-4 rounded-lg hover:bg-indigo-500 transition-colors disabled:opacity-50"
         >
           {formState === "submitting" ? "Submitting..." : "Submit Pledge"}
         </button>
