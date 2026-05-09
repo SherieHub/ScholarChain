@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 // Note: Adjust these import paths based on your actual project structure
 import { addScholar } from '@/lib/firebase/scholars';
-import { isValidPreprodAddress } from '@/utils/cardano'; 
+import { isValidPreprodAddress } from '@/lib/utils/addressUtils'; 
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
