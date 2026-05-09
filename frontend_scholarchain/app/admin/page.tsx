@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 
-// Next.js dynamic import ensures this only runs in the browser
 const AdminDashboard = dynamic(
   () => import("@/components/dashboard/AdminDashboard"),
   {
@@ -16,6 +15,5 @@ const AdminDashboard = dynamic(
 );
 
 export default function AdminPage() {
-  // No props needed! Just render the dashboard.
   return <AdminDashboard />;
 }
