@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useScholarData } from "@/hooks/useScholarData";
 import ScholarTable, { SkeletonRow } from "@/components/dashboard/ScholarTable";
+import TxHashLink from "@/components/transparency/TxHashLink";
 import SendScholarshipForm from "@/components/forms/SendScholarshipForm";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import SuccessMessage from "@/components/ui/SuccessMessage";
@@ -22,11 +23,13 @@ type TxState = "idle" | "processing" | "success" | "error";
 type ActiveTab = "table" | "manual";
 
 export default function AdminDashboard() {
-  const { connected, wallet } = useWalletConnection();
+  const { connected, name: walletName } = useWalletConnection();
   const { scholars, loading, error, refresh } = useScholarData("Approved");
 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  // Tracks txHash when DB write fails after a successful on-chain tx
+  const [rowWarnings, setRowWarnings] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<ActiveTab>("table");
 
   // Manual send tab state (Increment 1 backward compat)
@@ -35,16 +38,18 @@ export default function AdminDashboard() {
   const [errorMsg, setErrorMsg] = useState<string>("");
 
   const handleSendToScholar = async (scholar: Scholar) => {
-    if (!wallet || !scholar.id) return;
+    if (!walletName || !scholar.id) return;
     setProcessingId(scholar.id);
     setRowErrors(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
+    setRowWarnings(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
     try {
-      const hash = await sendADA(wallet, scholar.walletAddress, SCHOLARSHIP_AMOUNT_ADA);
+      const hash = await sendADA(walletName, scholar.walletAddress, SCHOLARSHIP_AMOUNT_ADA);
       try {
         await markScholarAsPaid(scholar.id, hash);
       } catch (dbErr) {
-        // Transaction is on-chain — log but don't block the UI update
+        // Transaction is confirmed on-chain — show the TxHash so the Admin can record it
         console.error("DB update failed after successful tx:", dbErr);
+        setRowWarnings(prev => ({ ...prev, [scholar.id!]: hash }));
       }
       refresh();
     } catch (err: unknown) {
@@ -55,11 +60,11 @@ export default function AdminDashboard() {
   };
 
   const handleManualSend = async (address: string, amount: number) => {
-    if (!wallet) return;
+    if (!walletName) return;
     setTxState("processing");
     setErrorMsg("");
     try {
-      const hash = await sendADA(wallet, address, amount.toString());
+      const hash = await sendADA(walletName, address, amount.toString());
       setTxHash(hash);
       setTxState("success");
     } catch (err: unknown) {
@@ -146,10 +151,18 @@ export default function AdminDashboard() {
                 scholars={scholars}
                 onSend={handleSendToScholar}
                 processingId={processingId}
+                amountAda={SCHOLARSHIP_AMOUNT_ADA}
+                isConnected={connected}
               />
             )}
+            {Object.entries(rowWarnings).map(([id, hash]) => (
+              <div key={id} role="alert" className="flex flex-wrap items-center gap-2 text-amber-300 text-xs bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+                <span>⚠ Payment sent on-chain but record update failed. Save this TxHash manually:</span>
+                <TxHashLink txHash={hash} short={false} />
+              </div>
+            ))}
             {Object.entries(rowErrors).map(([id, msg]) => (
-              <div key={id} className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+              <div key={id} role="alert" className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
                 Transaction error: {msg}
               </div>
             ))}

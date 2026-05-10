@@ -6,7 +6,9 @@ import { shortenAddress } from "@/lib/utils/addressUtils";
 interface ScholarTableProps {
   scholars: Scholar[];
   onSend: (scholar: Scholar) => void;
-  processingId: string | null; // Scholar ID currently processing a transaction
+  processingId: string | null;
+  amountAda: string;
+  isConnected: boolean;
 }
 
 function SkeletonRow() {
@@ -23,7 +25,7 @@ function SkeletonRow() {
 
 export { SkeletonRow };
 
-export default function ScholarTable({ scholars, onSend, processingId }: ScholarTableProps) {
+export default function ScholarTable({ scholars, onSend, processingId, amountAda, isConnected }: ScholarTableProps) {
   if (scholars.length === 0) {
     return (
       <div className="text-center py-10 text-gray-500 text-sm border border-gray-800 rounded-xl">
@@ -79,10 +81,11 @@ export default function ScholarTable({ scholars, onSend, processingId }: Scholar
                 ) : (
                   <button
                     onClick={() => onSend(scholar)}
-                    disabled={processingId !== null}
+                    disabled={processingId !== null || !isConnected}
+                    title={!isConnected ? "Connect your wallet to send" : undefined}
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors"
                   >
-                    Send 5 tADA →
+                    Send {amountAda} tADA →
                   </button>
                 )}
               </td>

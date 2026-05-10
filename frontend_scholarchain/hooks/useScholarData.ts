@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getScholarsByStatus } from "@/lib/firebase/scholars";
 import type { Scholar, ScholarStatus } from "@/types";
 
@@ -8,7 +8,7 @@ export function useScholarData(status: ScholarStatus = "Approved") {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getScholarsByStatus(status);
@@ -19,9 +19,9 @@ export function useScholarData(status: ScholarStatus = "Approved") {
     } finally {
       setLoading(false);
     }
-  };
+  }, [status]);
 
-  useEffect(() => { refresh(); }, [status]);
+  useEffect(() => { refresh(); }, [refresh]);
 
   return { scholars, loading, error, refresh };
 }

@@ -1,6 +1,6 @@
 import {
   collection, addDoc, getDocs, updateDoc, doc,
-  query, where, serverTimestamp, Timestamp
+  query, where, serverTimestamp
 } from "firebase/firestore";
 import { db } from "./config";
 import type { Scholar, ScholarStatus } from "@/types";
@@ -11,6 +11,7 @@ const SCHOLARS_COLLECTION = "scholars";
 export async function addScholar(data: Omit<Scholar, "id" | "status" | "createdAt" | "updatedAt">): Promise<string> {
   const docRef = await addDoc(collection(db, SCHOLARS_COLLECTION), {
     ...data,
+    walletAddress: data.walletAddress.trim(),
     status: "Pending" as ScholarStatus,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),

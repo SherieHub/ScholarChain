@@ -13,6 +13,8 @@ export function parseTxError(error: unknown): string {
     return "Insufficient tADA balance. Please top up from the Cardano Faucet.";
   if (msg.toLowerCase().includes("network"))
     return "Network error. Check your internet connection and retry.";
+  if (msg.includes("ErrorSync") || msg.includes("loadUtxoCbor"))
+    return "Wallet sync failed. The Preprod network may be slow — please wait a moment and try again.";
   if (msg.toLowerCase().includes("addr_test"))
     return "Invalid recipient address format. Must start with addr_test1.";
   return `Transaction failed: ${msg}`;

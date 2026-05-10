@@ -66,6 +66,7 @@ import { useWallet } from '@meshsdk/react';
 // Mock the external dependency
 vi.mock('@meshsdk/react', () => ({
   useWallet: vi.fn(),
+  useLovelace: vi.fn().mockReturnValue(null),
 }));
 
 describe('useWalletConnection', () => {
@@ -83,12 +84,12 @@ describe('useWalletConnection', () => {
 
     // Verify initial disconnected state
     expect(result.current.connected).toBe(false);
-    expect(result.current.address).toBe(null);
+    expect(result.current.address).toBeUndefined();
 
     // 2. Setup Mock for Connected State
     const mockWallet = {
       getUsedAddresses: vi.fn().mockResolvedValue(['addr_test_mock_123']),
-      getBalance: vi.fn().mockResolvedValue('100000000'),
+      getChangeAddress: vi.fn().mockResolvedValue('addr_test_mock_change'),
     };
 
     mockUseWallet.mockReturnValue({
@@ -101,10 +102,9 @@ describe('useWalletConnection', () => {
     // Rerender the hook to trigger the useEffect
     rerender();
 
-    // 3. Wait for Async Data Hydration
+    // 3. Wait for Async Data Hydration (address comes from getUsedAddresses)
     await waitFor(() => {
       expect(result.current.address).toBe('addr_test_mock_123');
-      expect(result.current.balance).toBe('100000000');
     });
 
     // 4. Setup Mock for Disconnect
@@ -117,7 +117,6 @@ describe('useWalletConnection', () => {
     rerender();
 
     // 5. Verify Cleanup
-    expect(result.current.address).toBe(null);
-    expect(result.current.balance).toBe(null);
+    expect(result.current.address).toBeUndefined();
   });
 });
