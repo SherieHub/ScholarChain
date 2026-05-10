@@ -34,3 +34,36 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+---
+
+## Firebase Setup (Increment 2+)
+
+ScholarChain uses Firebase Firestore as its off-chain database.
+
+### Steps
+
+1. Go to [console.firebase.google.com](https://console.firebase.google.com) and create a project named `scholarchain-dev`.
+2. Under **Build → Firestore Database**, click **Create database** (Start in test mode, region: `asia-southeast1`).
+3. Go to **Project Settings → Your Apps**, register a web app, and copy the config object.
+4. Copy `.env.example` to `.env.local` and fill in all six values:
+
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+```
+
+### Firestore Collections
+
+| Collection | Key Fields |
+|---|---|
+| `scholars` | `name` (string), `course` (string), `walletAddress` (string), `status` ("Pending"\|"Approved"\|"Rejected"), `createdAt` (timestamp), `updatedAt` (timestamp) |
+| `sponsors` | `sponsorName` (string), `pledgedAmount` (number), `createdAt` (timestamp) |
+
+### Demo Setup
+
+To populate the Admin Dashboard, manually set at least one scholar's `status` field to `"Approved"` in the Firebase Console. The dashboard only renders scholars with `status === "Approved"`.

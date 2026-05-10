@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useWallet } from "@meshsdk/react";
+import { BrowserWallet } from "@meshsdk/core";
 import {
   X,
   Wallet,
@@ -31,11 +32,9 @@ export default function WalletModal() {
 
   // Load available wallet extensions once on mount
   useEffect(() => {
-    import("@meshsdk/core").then(({ BrowserWallet }) => {
-      BrowserWallet.getAvailableWallets().then((w) =>
-        setWallets(w as unknown as WalletInfo[])
-      );
-    });
+    BrowserWallet.getAvailableWallets().then((w) =>
+      setWallets(w as unknown as WalletInfo[])
+    );
   }, []);
 
   // Close modal on Escape
@@ -57,7 +56,6 @@ export default function WalletModal() {
       // Step 2: get a fresh BrowserWallet instance to read the address immediately.
       // We can't rely on useWallet()'s `wallet` ref here because React state
       // updates are async — BrowserWallet.enable() gives us the live instance now.
-      const { BrowserWallet } = await import("@meshsdk/core");
       const bw = await BrowserWallet.enable(walletName);
 
       // Step 3: fetch address (fall back to change address for new wallets)
