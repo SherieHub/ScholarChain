@@ -43,3 +43,30 @@ export async function updateScholarStatus(scholarId: string, status: ScholarStat
   const ref = doc(db, SCHOLARS_COLLECTION, scholarId);
   await updateDoc(ref, { status, updatedAt: serverTimestamp() });
 }
+
+/** Find a scholar by their wallet address (used in Scholar Portal auth) */
+export async function getScholarByWalletAddress(walletAddress: string): Promise<Scholar | null> {
+  const q = query(
+    collection(db, SCHOLARS_COLLECTION),
+    where("walletAddress", "==", walletAddress.trim())
+  );
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  const d = snapshot.docs[0];
+  return { id: d.id, ...d.data() } as Scholar;
+}
+
+/** Update a scholar's policyId and scholarTokenId after NFT mint, marks status Approved */
+export async function updateScholarPolicyId(
+  scholarId: string,
+  policyId: string,
+  scholarTokenId: string
+): Promise<void> {
+  const ref = doc(db, SCHOLARS_COLLECTION, scholarId);
+  await updateDoc(ref, {
+    policyId,
+    scholarTokenId,
+    status: "Approved" as ScholarStatus,
+    updatedAt: serverTimestamp(),
+  });
+}
