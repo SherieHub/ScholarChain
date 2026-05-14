@@ -1,14 +1,29 @@
 import { Timestamp } from "firebase/firestore";
 
 export type ScholarStatus = "Pending" | "Approved" | "Rejected";
+export type RewardStatus = "Pending Review" | "Approved" | "Paid";
+
+export interface Achievement {
+  subject: string;
+  grade: string;
+  proofLink: string;
+  rewardStatus: RewardStatus;
+  adaRewarded?: number;
+  tokensRewarded?: number;
+  rewardTxHash?: string;
+  submittedAt: Timestamp;
+  paidAt?: Timestamp;
+}
 
 export interface Scholar {
-  id?: string;            // Firestore auto-ID (added after fetch)
+  id?: string;
   name: string;
   course: string;
   walletAddress: string;
   status: ScholarStatus;
-  policyId?: string;      // Populated in Increment 3
+  policyId?: string;
+  scholarTokenId?: string;
+  achievement?: Achievement;
   lastPaidTxHash?: string;
   paidAt?: Timestamp;
   createdAt: Timestamp;
