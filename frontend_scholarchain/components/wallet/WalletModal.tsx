@@ -30,12 +30,20 @@ export default function WalletModal() {
   const [connecting, setConnecting] = useState<string | null>(null);
   const [verifyAddress, setVerifyAddress] = useState<string>("");
 
-  // Load available wallet extensions once on mount
+  // Re-scan wallet extensions every time the selecting modal opens.
+  // Scanning only on mount misses extensions installed or activated after page load.
+  // Filter to known Cardano wallets — Brave and other browsers inject non-Cardano
+  // extensions into window.cardano which BrowserWallet.getAvailableWallets() picks up.
   useEffect(() => {
-    BrowserWallet.getAvailableWallets().then((w) =>
-      setWallets(w as unknown as WalletInfo[])
-    );
-  }, []);
+    if (modalState !== "selecting") return;
+    const CARDANO_WALLETS = ["eternl", "nami", "flint", "typhon", "nufi", "gerowallet", "begin", "vespr", "lace"];
+    BrowserWallet.getAvailableWallets().then((w) => {
+      const cardanoOnly = (w as unknown as WalletInfo[]).filter(
+        (wallet) => CARDANO_WALLETS.includes(wallet.name.toLowerCase())
+      );
+      setWallets(cardanoOnly);
+    });
+  }, [modalState]);
 
   // Close modal on Escape
   useEffect(() => {
