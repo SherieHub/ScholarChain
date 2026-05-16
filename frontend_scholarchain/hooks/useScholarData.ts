@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
-import { getScholarsByStatus } from "@/lib/firebase/scholars";
+import { getScholarsByStatus, getAllScholars } from "@/lib/firebase/scholars";
 import type { Scholar, ScholarStatus } from "@/types";
 
-export function useScholarData(status: ScholarStatus = "Approved") {
+export function useScholarData(status: ScholarStatus | "all" = "Approved") {
   const [scholars, setScholars] = useState<Scholar[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -11,7 +11,10 @@ export function useScholarData(status: ScholarStatus = "Approved") {
   const refresh = async () => {
     setLoading(true);
     try {
-      const data = await getScholarsByStatus(status);
+      const data =
+        status === "all"
+          ? await getAllScholars()
+          : await getScholarsByStatus(status);
       setScholars(data);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to load scholars";

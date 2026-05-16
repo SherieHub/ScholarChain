@@ -10,12 +10,13 @@ import ErrorMessage from "@/components/ui/ErrorMessage";
 import BackButton from "@/components/ui/BackButton";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { sendADA } from "@/lib/mesh/sendAda";
-import { markScholarAsPaid } from "@/lib/firebase/scholars";
+import { markScholarAsPaid, updateScholarPolicyId } from "@/lib/firebase/scholars";
 import { parseTxError } from "@/lib/mesh/errorHandler";
+import { getUniversityConfig, updateNftPolicyId } from "@/lib/firebase/config-store";
+import { mintScholarNFT } from "@/lib/mesh/mintNFT";
 import WalletStatus from "@/components/wallet/WalletStatus";
 import type { Scholar } from "@/types";
 
-// TODO [Increment 4]: Replace with dynamic per-scholar amount input
 const SCHOLARSHIP_AMOUNT_ADA = "5";
 
 type TxState = "idle" | "processing" | "success" | "error";
@@ -23,13 +24,13 @@ type ActiveTab = "table" | "manual";
 
 export default function AdminDashboard() {
   const { connected, wallet } = useWalletConnection();
-  const { scholars, loading, error, refresh } = useScholarData("Approved");
+  const { scholars, loading, error, refresh } = useScholarData("all");
 
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [mintingId, setMintingId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<ActiveTab>("table");
 
-  // Manual send tab state (Increment 1 backward compat)
   const [txState, setTxState] = useState<TxState>("idle");
   const [txHash, setTxHash] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
@@ -43,7 +44,6 @@ export default function AdminDashboard() {
       try {
         await markScholarAsPaid(scholar.id, hash);
       } catch (dbErr) {
-        // Transaction is on-chain — log but don't block the UI update
         console.error("DB update failed after successful tx:", dbErr);
       }
       refresh();
@@ -51,6 +51,37 @@ export default function AdminDashboard() {
       setRowErrors(prev => ({ ...prev, [scholar.id!]: parseTxError(err) }));
     } finally {
       setProcessingId(null);
+    }
+  };
+
+  const handleMint = async (scholar: Scholar) => {
+    if (!wallet || !scholar.id) return;
+    setMintingId(scholar.id);
+    setRowErrors(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
+    try {
+      const config = await getUniversityConfig();
+      const { txHash: mintTxHash, policyId, assetName } = await mintScholarNFT(
+        wallet,
+        scholar,
+        config.badgeIPFSUri
+      );
+      try {
+        await updateScholarPolicyId(scholar.id, policyId, assetName);
+        if (!config.nftPolicyId) {
+          await updateNftPolicyId(policyId);
+        }
+      } catch (dbErr) {
+        console.error("DB update failed after mint:", dbErr);
+      }
+      setRowErrors(prev => ({
+        ...prev,
+        [`mint_${scholar.id}`]: `Minted ✓  tx: ${mintTxHash.slice(0, 14)}...`,
+      }));
+      refresh();
+    } catch (err: unknown) {
+      setRowErrors(prev => ({ ...prev, [scholar.id!]: parseTxError(err) }));
+    } finally {
+      setMintingId(null);
     }
   };
 
@@ -72,7 +103,6 @@ export default function AdminDashboard() {
 
   return (
     <main className="relative flex flex-col items-center py-16 px-4 flex-1 overflow-hidden">
-      {/* Background glows */}
       <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-blue-600/8 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-1/4 w-[300px] h-[300px] rounded-full bg-indigo-600/8 blur-3xl" />
 
@@ -105,7 +135,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Tab switcher */}
         <div className="flex gap-2">
           <button
             onClick={() => setActiveTab("table")}
@@ -145,12 +174,21 @@ export default function AdminDashboard() {
               <ScholarTable
                 scholars={scholars}
                 onSend={handleSendToScholar}
+                onMint={handleMint}
                 processingId={processingId}
+                mintingId={mintingId}
               />
             )}
             {Object.entries(rowErrors).map(([id, msg]) => (
-              <div key={id} className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                Transaction error: {msg}
+              <div
+                key={id}
+                className={`text-xs rounded-lg px-3 py-2 ${
+                  id.startsWith("mint_")
+                    ? "text-green-400 bg-green-500/10 border border-green-500/20"
+                    : "text-red-400 bg-red-500/10 border border-red-500/20"
+                }`}
+              >
+                {id.startsWith("mint_") ? msg : `Transaction error: ${msg}`}
               </div>
             ))}
           </div>

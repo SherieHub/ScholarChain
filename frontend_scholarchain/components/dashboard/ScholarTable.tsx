@@ -6,13 +6,15 @@ import { shortenAddress } from "@/lib/utils/addressUtils";
 interface ScholarTableProps {
   scholars: Scholar[];
   onSend: (scholar: Scholar) => void;
-  processingId: string | null; // Scholar ID currently processing a transaction
+  onMint: (scholar: Scholar) => void;
+  processingId: string | null;
+  mintingId: string | null;
 }
 
 function SkeletonRow() {
   return (
     <tr className="border-b border-gray-800">
-      {Array.from({ length: 7 }).map((_, i) => (
+      {Array.from({ length: 8 }).map((_, i) => (
         <td key={i} className="px-4 py-3">
           <div className="h-4 bg-gray-800 rounded animate-pulse" />
         </td>
@@ -23,11 +25,17 @@ function SkeletonRow() {
 
 export { SkeletonRow };
 
-export default function ScholarTable({ scholars, onSend, processingId }: ScholarTableProps) {
+export default function ScholarTable({
+  scholars,
+  onSend,
+  onMint,
+  processingId,
+  mintingId,
+}: ScholarTableProps) {
   if (scholars.length === 0) {
     return (
       <div className="text-center py-10 text-gray-500 text-sm border border-gray-800 rounded-xl">
-        No approved scholars found. Approve a scholar in Firebase Console to populate this table.
+        No scholars found.
       </div>
     );
   }
@@ -42,6 +50,7 @@ export default function ScholarTable({ scholars, onSend, processingId }: Scholar
             <th className="px-4 py-3">Course</th>
             <th className="px-4 py-3">Wallet Address</th>
             <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3">Scholar ID</th>
             <th className="px-4 py-3">Payment</th>
             <th className="px-4 py-3">Action</th>
           </tr>
@@ -61,6 +70,13 @@ export default function ScholarTable({ scholars, onSend, processingId }: Scholar
               <td className="px-4 py-3">
                 <StatusBadge status={scholar.status} />
               </td>
+              <td className="px-4 py-3 font-mono text-xs text-gray-500">
+                {scholar.policyId ? (
+                  `${scholar.policyId.slice(0, 8)}...`
+                ) : (
+                  <span className="text-gray-700">Not Minted</span>
+                )}
+              </td>
               <td className="px-4 py-3">
                 {scholar.lastPaidTxHash ? (
                   <TxHashLink txHash={scholar.lastPaidTxHash} label="Paid ✓" />
@@ -69,21 +85,36 @@ export default function ScholarTable({ scholars, onSend, processingId }: Scholar
                 )}
               </td>
               <td className="px-4 py-3">
-                {processingId === scholar.id ? (
+                {mintingId === scholar.id ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-purple-400 text-xs">Minting NFT...</span>
+                  </div>
+                ) : processingId === scholar.id ? (
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                     <span className="text-blue-400 text-xs">Sending...</span>
                   </div>
-                ) : scholar.lastPaidTxHash ? (
+                ) : scholar.status === "Pending" ? (
+                  <button
+                    onClick={() => onMint(scholar)}
+                    disabled={mintingId !== null || processingId !== null}
+                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors"
+                  >
+                    Mint Scholar ID 🎖️
+                  </button>
+                ) : scholar.status === "Approved" && scholar.lastPaidTxHash ? (
                   <span className="text-green-400 text-xs font-medium">Paid ✓</span>
-                ) : (
+                ) : scholar.status === "Approved" ? (
                   <button
                     onClick={() => onSend(scholar)}
-                    disabled={processingId !== null}
+                    disabled={processingId !== null || mintingId !== null}
                     className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors"
                   >
                     Send 5 tADA →
                   </button>
+                ) : (
+                  <span className="text-gray-600 text-xs">—</span>
                 )}
               </td>
             </tr>

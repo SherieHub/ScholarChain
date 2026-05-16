@@ -56,6 +56,12 @@ export async function getScholarByWalletAddress(walletAddress: string): Promise<
   return { id: d.id, ...d.data() } as Scholar;
 }
 
+/** Fetch all scholars regardless of status (used in Admin Dashboard table) */
+export async function getAllScholars(): Promise<Scholar[]> {
+  const snapshot = await getDocs(collection(db, SCHOLARS_COLLECTION));
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Scholar));
+}
+
 /** Update a scholar's policyId and scholarTokenId after NFT mint, marks status Approved */
 export async function updateScholarPolicyId(
   scholarId: string,
