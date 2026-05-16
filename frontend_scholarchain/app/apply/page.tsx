@@ -8,7 +8,7 @@ export default function ApplyPage() {
         <BackButton />
         <div>
           <h1 className="text-3xl font-bold mb-1">Apply for Scholarship</h1>
-          <p className="text-slate-400 text-sm">Submit your application below. No wallet connection required.</p>
+          <p className="text-slate-400 text-sm">Connect your wallet to apply. Your address is auto-filled and verified with a signature.</p>
         </div>
         <ScholarApplicationForm />
       </div>

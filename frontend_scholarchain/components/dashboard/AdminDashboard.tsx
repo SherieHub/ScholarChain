@@ -15,6 +15,7 @@ import { parseTxError } from "@/lib/mesh/errorHandler";
 import { getUniversityConfig, updateNftPolicyId } from "@/lib/firebase/config-store";
 import { mintScholarNFT } from "@/lib/mesh/mintNFT";
 import WalletStatus from "@/components/wallet/WalletStatus";
+import WalletGate from "@/components/wallet/WalletGate";
 import type { Scholar } from "@/types";
 
 const SCHOLARSHIP_AMOUNT_ADA = "5";
@@ -116,15 +117,7 @@ export default function AdminDashboard() {
 
         <WalletStatus />
 
-        {!connected && (
-          <div
-            role="alert"
-            aria-live="polite"
-            className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-amber-300 text-sm backdrop-blur-sm"
-          >
-            Please connect your wallet to send scholarships.
-          </div>
-        )}
+        <WalletGate message="Connect your admin wallet to manage scholars and send scholarships.">
 
         {error && (
           <div
@@ -208,6 +201,8 @@ export default function AdminDashboard() {
             {txState === "error" && <ErrorMessage error={errorMsg} onDismiss={resetManual} />}
           </div>
         )}
+
+        </WalletGate>
       </div>
     </main>
   );

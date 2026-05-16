@@ -8,7 +8,7 @@ export default function SponsorEntryPage() {
         <BackButton href="/" />
         <div>
           <h1 className="text-3xl font-bold mb-1">Sponsor Registration</h1>
-          <p className="text-slate-400 text-sm">Register your pledge to support scholars on-chain.</p>
+          <p className="text-slate-400 text-sm">Connect your wallet and register your pledge to support scholars on-chain.</p>
         </div>
         <SponsorEntryForm />
       </div>

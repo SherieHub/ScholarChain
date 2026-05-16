@@ -1,11 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useWallet } from "@meshsdk/react";
+import { toHex } from "@meshsdk/core";
 import { verifyScholarBadge } from "@/lib/mesh/verifyNFTOwnership";
 import { getScholarByWalletAddress } from "@/lib/firebase/scholars";
 import type { Scholar } from "@/types";
 
-export type PortalState = "disconnected" | "scanning" | "authorized" | "denied";
+export type PortalState = "disconnected" | "signing" | "scanning" | "authorized" | "denied";
 
 export function useNFTVerification() {
   const { wallet, connected } = useWallet();
@@ -22,10 +23,19 @@ export function useNFTVerification() {
 
     let cancelled = false;
 
-    const scan = async () => {
-      setPortalState("scanning");
+    const run = async () => {
+      setPortalState("signing");
       setError(null);
       try {
+        const usedAddresses = await wallet.getUsedAddresses();
+        const address = usedAddresses[0] || (await wallet.getChangeAddress());
+        if (cancelled) return;
+
+        await wallet.signData(address, toHex("ScholarChain portal authentication"));
+        if (cancelled) return;
+
+        setPortalState("scanning");
+
         const { isAuthorized } = await verifyScholarBadge(wallet);
         if (cancelled) return;
 
@@ -34,10 +44,6 @@ export function useNFTVerification() {
           return;
         }
 
-        const usedAddresses = await wallet.getUsedAddresses();
-        const address = usedAddresses[0] || (await wallet.getChangeAddress());
-        if (cancelled) return;
-
         const scholarData = await getScholarByWalletAddress(address);
         if (cancelled) return;
 
@@ -45,12 +51,21 @@ export function useNFTVerification() {
         setPortalState("authorized");
       } catch (err) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Verification failed.");
+        const msg = err instanceof Error ? err.message : "Verification failed.";
+        if (
+          msg.toLowerCase().includes("user declined") ||
+          msg.toLowerCase().includes("cancelled") ||
+          msg.toLowerCase().includes("rejected")
+        ) {
+          setError("You must sign the authentication challenge to access the portal.");
+        } else {
+          setError(msg);
+        }
         setPortalState("denied");
       }
     };
 
-    scan();
+    run();
 
     return () => { cancelled = true; };
   }, [connected, wallet]);

@@ -1,10 +1,11 @@
 "use client";
 import { useState } from "react";
 import { addSponsor } from "@/lib/firebase/sponsors";
+import WalletGate from "@/components/wallet/WalletGate";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
-export default function SponsorEntryForm() {
+function SponsorFormInner() {
   const [sponsorName, setSponsorName] = useState("");
   const [amount, setAmount] = useState("");
   const [formState, setFormState] = useState<FormState>("idle");
@@ -94,7 +95,9 @@ export default function SponsorEntryForm() {
               placeholder="0"
               className="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-2.5 pr-16 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-blue-500/60 transition-colors"
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">ADA</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 pointer-events-none">
+              ADA
+            </span>
           </div>
           <p className="text-xs text-slate-500">Enter the amount in ADA you intend to contribute.</p>
         </div>
@@ -114,5 +117,13 @@ export default function SponsorEntryForm() {
         </button>
       </form>
     </div>
+  );
+}
+
+export default function SponsorEntryForm() {
+  return (
+    <WalletGate message="Connect your Cardano wallet to register as a sponsor.">
+      <SponsorFormInner />
+    </WalletGate>
   );
 }

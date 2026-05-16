@@ -1,11 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useWallet } from "@meshsdk/react";
+import { toHex } from "@meshsdk/core";
 import { addScholar } from "@/lib/firebase/scholars";
 import { isValidPreprodAddress, shortenAddress } from "@/lib/utils/addressUtils";
+import WalletGate from "@/components/wallet/WalletGate";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
-export default function ScholarApplicationForm() {
+function ApplicationFormInner() {
+  const { wallet } = useWallet();
   const [name, setName] = useState("");
   const [course, setCourse] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
@@ -13,11 +17,19 @@ export default function ScholarApplicationForm() {
   const [errorMsg, setErrorMsg] = useState("");
   const [submittedAddress, setSubmittedAddress] = useState("");
 
+  useEffect(() => {
+    if (!wallet) return;
+    wallet.getUsedAddresses().then(addrs => {
+      if (addrs.length > 0) setWalletAddress(addrs[0]);
+      else wallet.getChangeAddress().then(setWalletAddress);
+    }).catch(() => {});
+  }, [wallet]);
+
   const validate = (): string | null => {
     if (name.trim().length < 3) return "Full name must be at least 3 characters.";
     if (course.trim().length < 2) return "Course / degree program is required.";
     if (!isValidPreprodAddress(walletAddress.trim()))
-      return "Wallet address must start with addr_test1 and be at least 50 characters.";
+      return "Wallet address could not be read. Please reconnect your wallet.";
     return null;
   };
 
@@ -28,19 +40,32 @@ export default function ScholarApplicationForm() {
     setErrorMsg("");
     setFormState("submitting");
     try {
+      await wallet!.signData(
+        walletAddress,
+        toHex(`ScholarChain application: ${name.trim()}`)
+      );
       await addScholar({ name: name.trim(), course: course.trim(), walletAddress: walletAddress.trim() });
       setSubmittedAddress(walletAddress.trim());
       setFormState("success");
-    } catch {
-      setFormState("error");
-      setErrorMsg("Failed to submit application. Please try again.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (
+        msg.toLowerCase().includes("user declined") ||
+        msg.toLowerCase().includes("cancelled") ||
+        msg.toLowerCase().includes("rejected")
+      ) {
+        setErrorMsg("You must sign the application to confirm wallet ownership.");
+        setFormState("idle");
+      } else {
+        setFormState("error");
+        setErrorMsg("Failed to submit application. Please try again.");
+      }
     }
   };
 
   const reset = () => {
     setName("");
     setCourse("");
-    setWalletAddress("");
     setErrorMsg("");
     setFormState("idle");
   };
@@ -99,14 +124,11 @@ export default function ScholarApplicationForm() {
           <label className="text-sm font-medium text-slate-300">Cardano Preprod Wallet Address</label>
           <input
             type="text"
-            value={walletAddress}
-            onChange={e => setWalletAddress(e.target.value)}
-            placeholder="addr_test1..."
-            className="bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-2.5 text-sm text-white font-mono placeholder:text-slate-500 focus:outline-none focus:border-blue-500/60 transition-colors"
+            readOnly
+            value={walletAddress || "Loading from wallet..."}
+            className="bg-white/[0.02] border border-white/[0.06] rounded-xl px-4 py-2.5 text-sm font-mono text-slate-400 cursor-default"
           />
-          <p className="text-xs text-slate-500">
-            Copy from your Eternl or Nami wallet on Preprod. Starts with <span className="font-mono">addr_test1</span>.
-          </p>
+          <p className="text-xs text-slate-500">Auto-filled from your connected wallet.</p>
         </div>
 
         {errorMsg && (
@@ -117,12 +139,23 @@ export default function ScholarApplicationForm() {
 
         <button
           type="submit"
-          disabled={formState === "submitting"}
+          disabled={formState === "submitting" || !walletAddress}
           className="mt-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:opacity-60 text-white font-medium rounded-xl px-4 py-2.5 text-sm transition-colors"
         >
-          {formState === "submitting" ? "Submitting..." : "Submit Application"}
+          {formState === "submitting" ? "Signing & Submitting..." : "Submit Application"}
         </button>
+        <p className="text-xs text-slate-600 text-center">
+          Your wallet will prompt you to sign the application as proof of ownership.
+        </p>
       </form>
     </div>
+  );
+}
+
+export default function ScholarApplicationForm() {
+  return (
+    <WalletGate message="Connect your Cardano wallet to apply. Your wallet address will be auto-filled and verified.">
+      <ApplicationFormInner />
+    </WalletGate>
   );
 }
