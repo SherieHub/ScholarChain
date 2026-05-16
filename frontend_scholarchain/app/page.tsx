@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, GraduationCap, Handshake } from "lucide-react";
+import { LayoutDashboard, GraduationCap, Handshake, BarChart3, Shield } from "lucide-react";
 
 const cards = [
   {
@@ -13,7 +13,7 @@ const cards = [
     href: "/apply",
     icon: GraduationCap,
     title: "Apply for Scholarship",
-    desc: "Students: submit your application here.",
+    desc: "Students: connect wallet and submit your application.",
     color: "indigo",
   },
   {
@@ -22,6 +22,20 @@ const cards = [
     title: "Sponsor Registration",
     desc: "Sponsors: register your pledge here.",
     color: "violet",
+  },
+  {
+    href: "/scholar-portal",
+    icon: Shield,
+    title: "Scholar Portal",
+    desc: "Scholars: verify your NFT badge and submit achievements.",
+    color: "green",
+  },
+  {
+    href: "/transparency",
+    icon: BarChart3,
+    title: "Transparency Dashboard",
+    desc: "Live on-chain treasury data — no wallet required.",
+    color: "cyan",
   },
 ];
 
@@ -81,6 +95,8 @@ export default function Home() {
                   ${color === "blue"   ? "bg-blue-500/10 border border-blue-500/20 group-hover:bg-blue-500/25 group-hover:shadow-[0_0_16px_rgba(59,130,246,0.3)]"   : ""}
                   ${color === "indigo" ? "bg-indigo-500/10 border border-indigo-500/20 group-hover:bg-indigo-500/25 group-hover:shadow-[0_0_16px_rgba(99,102,241,0.3)]" : ""}
                   ${color === "violet" ? "bg-violet-500/10 border border-violet-500/20 group-hover:bg-violet-500/25 group-hover:shadow-[0_0_16px_rgba(139,92,246,0.3)]" : ""}
+                  ${color === "green"  ? "bg-green-500/10 border border-green-500/20 group-hover:bg-green-500/25 group-hover:shadow-[0_0_16px_rgba(34,197,94,0.3)]"    : ""}
+                  ${color === "cyan"   ? "bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/25 group-hover:shadow-[0_0_16px_rgba(6,182,212,0.3)]"      : ""}
                 `}
               >
                 <Icon
@@ -88,6 +104,8 @@ export default function Home() {
                     ${color === "blue"   ? "text-blue-400"   : ""}
                     ${color === "indigo" ? "text-indigo-400" : ""}
                     ${color === "violet" ? "text-violet-400" : ""}
+                    ${color === "green"  ? "text-green-400"  : ""}
+                    ${color === "cyan"   ? "text-cyan-400"   : ""}
                   `}
                   aria-hidden="true"
                 />
