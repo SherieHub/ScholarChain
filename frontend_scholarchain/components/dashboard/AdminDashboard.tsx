@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useScholarData } from "@/hooks/useScholarData";
 import ScholarTable, { SkeletonRow } from "@/components/dashboard/ScholarTable";
+import PendingRewardsTable from "@/components/dashboard/PendingRewardsTable";
+import TreasuryMintPanel from "@/components/dashboard/TreasuryMintPanel";
 import SendScholarshipForm from "@/components/forms/SendScholarshipForm";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import SuccessMessage from "@/components/ui/SuccessMessage";
@@ -10,10 +12,11 @@ import ErrorMessage from "@/components/ui/ErrorMessage";
 import BackButton from "@/components/ui/BackButton";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { sendADA } from "@/lib/mesh/sendAda";
-import { markScholarAsPaid, updateScholarPolicyId } from "@/lib/firebase/scholars";
+import { markScholarAsPaid, updateScholarPolicyId, getPendingRewardScholars, markRewardAsPaid } from "@/lib/firebase/scholars";
 import { parseTxError } from "@/lib/mesh/errorHandler";
 import { getUniversityConfig, updateNftPolicyId } from "@/lib/firebase/config-store";
 import { mintScholarNFT } from "@/lib/mesh/mintNFT";
+import { sendMultiAssetReward } from "@/lib/mesh/sendMultiAsset";
 import WalletStatus from "@/components/wallet/WalletStatus";
 import WalletGate from "@/components/wallet/WalletGate";
 import type { Scholar } from "@/types";
@@ -21,20 +24,32 @@ import type { Scholar } from "@/types";
 const SCHOLARSHIP_AMOUNT_ADA = "5";
 
 type TxState = "idle" | "processing" | "success" | "error";
-type ActiveTab = "table" | "manual";
+type ActiveTab = "table" | "manual" | "rewards" | "treasury";
 
 export default function AdminDashboard() {
-  const { connected, wallet } = useWalletConnection();
+  const { wallet } = useWalletConnection();
   const { scholars, loading, error, refresh } = useScholarData("all");
+  const { scholars: pendingRewardScholars, loading: rewardsLoading, refresh: refreshRewards } = useScholarData("Approved");
 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [mintingId, setMintingId] = useState<string | null>(null);
+  const [rewardProcessingId, setRewardProcessingId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<ActiveTab>("table");
+  const [pendingRewards, setPendingRewards] = useState<Scholar[]>([]);
 
   const [txState, setTxState] = useState<TxState>("idle");
   const [txHash, setTxHash] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
+
+  const loadPendingRewards = async () => {
+    try {
+      const data = await getPendingRewardScholars();
+      setPendingRewards(data);
+    } catch {
+      setPendingRewards([]);
+    }
+  };
 
   const handleSendToScholar = async (scholar: Scholar) => {
     if (!wallet || !scholar.id) return;
@@ -42,11 +57,7 @@ export default function AdminDashboard() {
     setRowErrors(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
     try {
       const hash = await sendADA(wallet, scholar.walletAddress, SCHOLARSHIP_AMOUNT_ADA);
-      try {
-        await markScholarAsPaid(scholar.id, hash);
-      } catch (dbErr) {
-        console.error("DB update failed after successful tx:", dbErr);
-      }
+      try { await markScholarAsPaid(scholar.id, hash); } catch (dbErr) { console.error(dbErr); }
       refresh();
     } catch (err: unknown) {
       setRowErrors(prev => ({ ...prev, [scholar.id!]: parseTxError(err) }));
@@ -61,28 +72,31 @@ export default function AdminDashboard() {
     setRowErrors(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
     try {
       const config = await getUniversityConfig();
-      const { txHash: mintTxHash, policyId, assetName } = await mintScholarNFT(
-        wallet,
-        scholar,
-        config.badgeIPFSUri
-      );
+      const { txHash: mintTxHash, policyId, assetName } = await mintScholarNFT(wallet, scholar, config.badgeIPFSUri);
       try {
         await updateScholarPolicyId(scholar.id, policyId, assetName);
-        if (!config.nftPolicyId) {
-          await updateNftPolicyId(policyId);
-        }
-      } catch (dbErr) {
-        console.error("DB update failed after mint:", dbErr);
-      }
-      setRowErrors(prev => ({
-        ...prev,
-        [`mint_${scholar.id}`]: `Minted ✓  tx: ${mintTxHash.slice(0, 14)}...`,
-      }));
+        if (!config.nftPolicyId) await updateNftPolicyId(policyId);
+      } catch (dbErr) { console.error(dbErr); }
+      setRowErrors(prev => ({ ...prev, [`mint_${scholar.id}`]: `Minted ✓  tx: ${mintTxHash.slice(0, 14)}...` }));
       refresh();
     } catch (err: unknown) {
       setRowErrors(prev => ({ ...prev, [scholar.id!]: parseTxError(err) }));
     } finally {
       setMintingId(null);
+    }
+  };
+
+  const handleApproveReward = async (scholar: Scholar, adaAmount: number, tokenAmount: number) => {
+    if (!wallet || !scholar.id) return;
+    setRewardProcessingId(scholar.id);
+    try {
+      const { txHash: rewardTxHash } = await sendMultiAssetReward(wallet, scholar.walletAddress, adaAmount, tokenAmount);
+      await markRewardAsPaid(scholar.id, rewardTxHash, adaAmount, tokenAmount);
+      await loadPendingRewards();
+    } catch (err: unknown) {
+      setRowErrors(prev => ({ ...prev, [`reward_${scholar.id}`]: parseTxError(err) }));
+    } finally {
+      setRewardProcessingId(null);
     }
   };
 
@@ -102,6 +116,13 @@ export default function AdminDashboard() {
 
   const resetManual = () => { setErrorMsg(""); setTxState("idle"); };
 
+  const tabs: { id: ActiveTab; label: string }[] = [
+    { id: "table", label: "Scholar Table" },
+    { id: "manual", label: "Manual Send" },
+    { id: "rewards", label: "Rewards" },
+    { id: "treasury", label: "Treasury" },
+  ];
+
   return (
     <main className="relative flex flex-col items-center py-16 px-4 flex-1 overflow-hidden">
       <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-blue-600/8 blur-3xl" />
@@ -120,48 +141,35 @@ export default function AdminDashboard() {
         <WalletGate message="Connect your admin wallet to manage scholars and send scholarships.">
 
         {error && (
-          <div
-            role="alert"
-            className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-300 text-sm backdrop-blur-sm"
-          >
+          <div role="alert" className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-300 text-sm backdrop-blur-sm">
             Failed to load scholars: {error}
           </div>
         )}
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab("table")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === "table"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-            }`}
-          >
-            Scholar Table
-          </button>
-          <button
-            onClick={() => setActiveTab("manual")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === "manual"
-                ? "bg-blue-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-            }`}
-          >
-            Manual Send
-          </button>
+        <div className="flex gap-2 flex-wrap">
+          {tabs.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => {
+                setActiveTab(id);
+                if (id === "rewards") loadPendingRewards();
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === id
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {activeTab === "table" && (
           <div className="flex flex-col gap-3">
             {loading ? (
               <div className="overflow-x-auto rounded-xl border border-gray-800">
-                <table className="w-full text-sm">
-                  <tbody>
-                    <SkeletonRow />
-                    <SkeletonRow />
-                    <SkeletonRow />
-                  </tbody>
-                </table>
+                <table className="w-full text-sm"><tbody><SkeletonRow /><SkeletonRow /><SkeletonRow /></tbody></table>
               </div>
             ) : (
               <ScholarTable
@@ -173,14 +181,11 @@ export default function AdminDashboard() {
               />
             )}
             {Object.entries(rowErrors).map(([id, msg]) => (
-              <div
-                key={id}
-                className={`text-xs rounded-lg px-3 py-2 ${
-                  id.startsWith("mint_")
-                    ? "text-green-400 bg-green-500/10 border border-green-500/20"
-                    : "text-red-400 bg-red-500/10 border border-red-500/20"
-                }`}
-              >
+              <div key={id} className={`text-xs rounded-lg px-3 py-2 ${
+                id.startsWith("mint_")
+                  ? "text-green-400 bg-green-500/10 border border-green-500/20"
+                  : "text-red-400 bg-red-500/10 border border-red-500/20"
+              }`}>
                 {id.startsWith("mint_") ? msg : `Transaction error: ${msg}`}
               </div>
             ))}
@@ -189,18 +194,35 @@ export default function AdminDashboard() {
 
         {activeTab === "manual" && (
           <div className="max-w-lg">
-            {txState === "idle" && (
-              <SendScholarshipForm
-                onSubmit={handleManualSend}
-                isLoading={false}
-                isConnected={connected}
-              />
-            )}
+            {txState === "idle" && <SendScholarshipForm onSubmit={handleManualSend} isLoading={false} isConnected={true} />}
             {txState === "processing" && <LoadingSpinner />}
             {txState === "success" && <SuccessMessage txHash={txHash} onReset={resetManual} />}
             {txState === "error" && <ErrorMessage error={errorMsg} onDismiss={resetManual} />}
           </div>
         )}
+
+        {activeTab === "rewards" && (
+          <div className="flex flex-col gap-3">
+            {rewardsLoading ? (
+              <p className="text-sm text-slate-500">Loading...</p>
+            ) : (
+              <PendingRewardsTable
+                scholars={pendingRewards}
+                onApproveReward={handleApproveReward}
+                processingId={rewardProcessingId}
+              />
+            )}
+            {Object.entries(rowErrors)
+              .filter(([id]) => id.startsWith("reward_"))
+              .map(([id, msg]) => (
+                <div key={id} className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                  {msg}
+                </div>
+              ))}
+          </div>
+        )}
+
+        {activeTab === "treasury" && <TreasuryMintPanel />}
 
         </WalletGate>
       </div>
