@@ -15,5 +15,9 @@ export function parseTxError(error: unknown): string {
     return "Network error. Check your internet connection and retry.";
   if (msg.toLowerCase().includes("addr_test"))
     return "Invalid recipient address format. Must start with addr_test1.";
+  if (msg.toLowerCase().includes("scholar") && msg.toLowerCase().includes("token"))
+    return "Insufficient SCHOLAR tokens in admin wallet. Mint more supply first.";
+  if (msg.toLowerCase().includes("policy") && msg.toLowerCase().includes("not found"))
+    return "Token Policy ID not found. Mint the SCHOLAR token supply before sending rewards.";
   return `Transaction failed: ${msg}`;
 }
