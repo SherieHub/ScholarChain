@@ -7,6 +7,7 @@ import AccessDenied from "@/components/wallet/AccessDenied";
 import NFTScanningState from "@/components/wallet/NFTScanningState";
 import WalletGate from "@/components/wallet/WalletGate";
 import BackButton from "@/components/ui/BackButton";
+import { submitAchievement } from "@/lib/firebase/scholars";
 
 function PortalContent() {
   const { connected, wallet, disconnect } = useWallet();
@@ -23,10 +24,21 @@ function PortalContent() {
   }, [connected, wallet]);
 
   const adaBalance = lovelace ? (Number(lovelace) / 1_000_000).toFixed(2) : "—";
+  const [isSubmittingAchievement, setIsSubmittingAchievement] = useState(false);
 
   const handleDisconnect = () => {
     disconnect();
     reset();
+  };
+
+  const handleSubmitAchievement = async (data: { subject: string; grade: string; proofLink: string }) => {
+    if (!scholar?.id) return;
+    setIsSubmittingAchievement(true);
+    try {
+      await submitAchievement(scholar.id, data);
+    } finally {
+      setIsSubmittingAchievement(false);
+    }
   };
 
   if (portalState === "signing") {
@@ -63,6 +75,8 @@ function PortalContent() {
         scholar={scholar}
         walletBalance={adaBalance}
         onDisconnect={handleDisconnect}
+        onSubmitAchievement={handleSubmitAchievement}
+        isSubmittingAchievement={isSubmittingAchievement}
       />
     );
   }

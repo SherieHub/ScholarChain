@@ -1,14 +1,24 @@
 import type { Scholar } from "@/types";
 import { shortenAddress } from "@/lib/utils/addressUtils";
 import TxHashLink from "@/components/transparency/TxHashLink";
+import AchievementSubmitForm from "@/components/forms/AchievementSubmitForm";
+import AchievementStatusCard from "@/components/ui/AchievementStatusCard";
 
 interface ScholarDashboardProps {
   scholar: Scholar;
   walletBalance: string;
   onDisconnect: () => void;
+  onSubmitAchievement?: (data: { subject: string; grade: string; proofLink: string }) => Promise<void>;
+  isSubmittingAchievement?: boolean;
 }
 
-export default function ScholarDashboard({ scholar, walletBalance, onDisconnect }: ScholarDashboardProps) {
+export default function ScholarDashboard({
+  scholar,
+  walletBalance,
+  onDisconnect,
+  onSubmitAchievement,
+  isSubmittingAchievement = false,
+}: ScholarDashboardProps) {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -87,10 +97,19 @@ export default function ScholarDashboard({ scholar, walletBalance, onDisconnect 
         </div>
       )}
 
-      {/* Achievement Placeholder */}
-      <div className="bg-white/[0.02] border border-dashed border-white/[0.08] rounded-2xl p-5 text-center">
-        <p className="text-slate-600 text-sm">Achievement rewards coming in Increment 4</p>
-      </div>
+      {/* Achievement Section */}
+      {scholar.achievement ? (
+        <AchievementStatusCard achievement={scholar.achievement} />
+      ) : null}
+
+      {onSubmitAchievement && scholar.id && (
+        <AchievementSubmitForm
+          scholarId={scholar.id}
+          onSubmit={onSubmitAchievement}
+          isSubmitting={isSubmittingAchievement}
+          currentAchievement={scholar.achievement}
+        />
+      )}
     </div>
   );
 }
