@@ -122,14 +122,13 @@ export function useNFTVerification() {
         if (cancelled) return;
         setPortalState("scanning");
 
-        let isAuthorized = false;
+        let verifyResult: Awaited<ReturnType<typeof verifyScholarBadge>>;
         try {
-          const result = await withTimeout(
-            verifyScholarBadge(wallet),
+          verifyResult = await withTimeout(
+            verifyScholarBadge(wallet, address),
             45_000,
             "NFT scan timed out. The network may be congested — please try again."
           );
-          isAuthorized = result.isAuthorized;
         } catch (scanErr) {
           if (cancelled) return;
           const msg = scanErr instanceof Error ? scanErr.message : "";
@@ -144,12 +143,13 @@ export function useNFTVerification() {
 
         if (cancelled) return;
 
-        if (!isAuthorized) {
+        if (!verifyResult.isAuthorized) {
           setPortalState("denied");
           return;
         }
 
-        const scholarData = await getScholarByWalletAddress(address);
+        // verifyScholarBadge already fetched the scholar — no second Firestore read needed
+        const scholarData = verifyResult.scholar ?? await getScholarByWalletAddress(address);
         if (cancelled) return;
 
         // Write cache so subsequent page visits skip signing + scanning
