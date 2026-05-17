@@ -8,12 +8,15 @@ import NFTScanningState from "@/components/wallet/NFTScanningState";
 import WalletGate from "@/components/wallet/WalletGate";
 import BackButton from "@/components/ui/BackButton";
 import { submitAchievement } from "@/lib/firebase/scholars";
+import { getUniversityConfig } from "@/lib/firebase/config-store";
 
 function PortalContent() {
   const { connected, wallet, disconnect } = useWallet();
   const lovelace = useLovelace();
   const { portalState, scholar, error, reset } = useNFTVerification();
   const [walletAddress, setWalletAddress] = useState<string>("");
+  const [badgeImageUri, setBadgeImageUri] = useState<string | undefined>(undefined);
+  const [isSubmittingAchievement, setIsSubmittingAchievement] = useState(false);
 
   useEffect(() => {
     if (!connected || !wallet) { setWalletAddress(""); return; }
@@ -23,12 +26,20 @@ function PortalContent() {
     }).catch(() => {});
   }, [connected, wallet]);
 
+  // Fetch the badge IPFS URI from config once the scholar is authorized
+  useEffect(() => {
+    if (portalState !== "authorized") return;
+    getUniversityConfig()
+      .then(config => setBadgeImageUri(config.badgeIPFSUri || undefined))
+      .catch(() => setBadgeImageUri(undefined));
+  }, [portalState]);
+
   const adaBalance = lovelace ? (Number(lovelace) / 1_000_000).toFixed(2) : "—";
-  const [isSubmittingAchievement, setIsSubmittingAchievement] = useState(false);
 
   const handleDisconnect = () => {
     disconnect();
     reset();
+    setBadgeImageUri(undefined);
   };
 
   const handleSubmitAchievement = async (data: { subject: string; grade: string; proofLink: string }) => {
@@ -74,10 +85,41 @@ function PortalContent() {
       <ScholarDashboard
         scholar={scholar}
         walletBalance={adaBalance}
+        badgeImageUri={badgeImageUri}
         onDisconnect={handleDisconnect}
         onSubmitAchievement={handleSubmitAchievement}
         isSubmittingAchievement={isSubmittingAchievement}
       />
+    );
+  }
+
+  // NFT verified but no Firestore record found for this wallet
+  if (portalState === "authorized" && !scholar) {
+    return (
+      <div className="flex flex-col items-center gap-6 py-12 px-4 text-center">
+        <div className="w-16 h-16 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-3xl">
+          ⚠️
+        </div>
+        <div>
+          <h2 className="text-xl font-bold text-white mb-2">Scholar Record Not Found</h2>
+          <p className="text-slate-400 text-sm leading-relaxed">
+            Your wallet holds a valid Scholar Badge, but no application record was found for this address.
+            Please contact your scholarship administrator.
+          </p>
+        </div>
+        {walletAddress && (
+          <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 w-full text-left">
+            <p className="text-xs text-slate-500 mb-1">Connected Wallet</p>
+            <p className="font-mono text-xs text-slate-300 break-all">{walletAddress}</p>
+          </div>
+        )}
+        <button
+          onClick={handleDisconnect}
+          className="text-sm text-slate-400 hover:text-white underline transition-colors"
+        >
+          Disconnect and try another wallet
+        </button>
+      </div>
     );
   }
 

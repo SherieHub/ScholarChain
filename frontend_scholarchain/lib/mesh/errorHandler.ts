@@ -19,5 +19,9 @@ export function parseTxError(error: unknown): string {
     return "Insufficient SCHOLAR tokens in admin wallet. Mint more supply first.";
   if (msg.toLowerCase().includes("policy") && msg.toLowerCase().includes("not found"))
     return "Token Policy ID not found. Mint the SCHOLAR token supply before sending rewards.";
+  if (msg.toLowerCase().includes("university config not found"))
+    return "Firestore config document is missing. Create the config/config document in Firebase Console before minting.";
+  if (msg.toLowerCase().includes("badge ipfs uri is not configured"))
+    return "Badge IPFS URI is not set. Upload a badge image to Pinata and store the ipfs:// URI in the Firestore config document.";
   return `Transaction failed: ${msg}`;
 }

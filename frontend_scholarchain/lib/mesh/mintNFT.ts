@@ -8,6 +8,14 @@ export async function mintScholarNFT(
   scholar: Scholar,
   badgeIPFSUri: string
 ): Promise<{ txHash: string; policyId: string; assetName: string }> {
+  if (!wallet) throw new Error("Wallet not connected.");
+  if (!scholar.id) throw new Error("Scholar record is missing an ID.");
+  if (!badgeIPFSUri || badgeIPFSUri.trim() === "") {
+    throw new Error(
+      "Badge IPFS URI is not configured. Upload a badge image to Pinata and set badgeIPFSUri in the Firestore config document."
+    );
+  }
+
   const usedAddresses = await wallet.getUsedAddresses();
   const address =
     usedAddresses.length > 0 ? usedAddresses[0] : await wallet.getChangeAddress();

@@ -16,6 +16,12 @@ export async function verifyScholarBadge(wallet: any): Promise<{
 
   try {
     const config = await getUniversityConfig();
+
+    // An empty policyId would match every asset in the wallet — deny immediately.
+    if (!config.nftPolicyId || config.nftPolicyId.trim() === "") {
+      return { isAuthorized: false, matchedAsset: null };
+    }
+
     const assets = await wallet.getAssets();
 
     const match = assets.find(

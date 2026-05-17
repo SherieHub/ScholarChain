@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { addSponsor } from "@/lib/firebase/sponsors";
-import WalletGate from "@/components/wallet/WalletGate";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
@@ -20,7 +19,7 @@ function SponsorFormInner() {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const err = validate();
     if (err) { setErrorMsg(err); return; }
@@ -121,9 +120,5 @@ function SponsorFormInner() {
 }
 
 export default function SponsorEntryForm() {
-  return (
-    <WalletGate message="Connect your Cardano wallet to register as a sponsor.">
-      <SponsorFormInner />
-    </WalletGate>
-  );
+  return <SponsorFormInner />;
 }

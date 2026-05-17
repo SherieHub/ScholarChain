@@ -17,7 +17,7 @@ export function buildScholarBadgeMetadata(
           scholarName,
         },
       },
-      version: "1.0",
+      version: 1,
     },
   };
 }

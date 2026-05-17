@@ -1,8 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useWallet } from "@meshsdk/react";
-import { toHex } from "@meshsdk/core";
 import { addScholar } from "@/lib/firebase/scholars";
+
+function toHex(text: string): string {
+  return Array.from(new TextEncoder().encode(text))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 import { isValidPreprodAddress, shortenAddress } from "@/lib/utils/addressUtils";
 import WalletGate from "@/components/wallet/WalletGate";
 
@@ -33,7 +38,7 @@ function ApplicationFormInner() {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const err = validate();
     if (err) { setErrorMsg(err); return; }

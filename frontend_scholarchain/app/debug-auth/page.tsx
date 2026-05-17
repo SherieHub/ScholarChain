@@ -1,7 +1,7 @@
 'use client';
 
 import { useWalletConnection } from '@/hooks/useWalletConnection';
-import { WalletConnectButton } from '@/components/wallet/WalletConnectButton';
+import WalletConnectButton from '@/components/wallet/WalletConnectButton';
 
 /**
  * Diagnostic Auth Dashboard

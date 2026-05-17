@@ -19,6 +19,7 @@ import { mintScholarNFT } from "@/lib/mesh/mintNFT";
 import { sendMultiAssetReward } from "@/lib/mesh/sendMultiAsset";
 import WalletStatus from "@/components/wallet/WalletStatus";
 import WalletGate from "@/components/wallet/WalletGate";
+import TxHashLink from "@/components/transparency/TxHashLink";
 import type { Scholar } from "@/types";
 
 const SCHOLARSHIP_AMOUNT_ADA = "5";
@@ -29,25 +30,30 @@ type ActiveTab = "table" | "manual" | "rewards" | "treasury";
 export default function AdminDashboard() {
   const { wallet } = useWalletConnection();
   const { scholars, loading, error, refresh } = useScholarData("all");
-  const { scholars: pendingRewardScholars, loading: rewardsLoading, refresh: refreshRewards } = useScholarData("Approved");
 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [mintingId, setMintingId] = useState<string | null>(null);
   const [rewardProcessingId, setRewardProcessingId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  // Separate state for mint successes so we can render TxHashLink (not just plain text)
+  const [mintSuccesses, setMintSuccesses] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<ActiveTab>("table");
   const [pendingRewards, setPendingRewards] = useState<Scholar[]>([]);
+  const [rewardsLoading, setRewardsLoading] = useState(false);
 
   const [txState, setTxState] = useState<TxState>("idle");
   const [txHash, setTxHash] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
 
   const loadPendingRewards = async () => {
+    setRewardsLoading(true);
     try {
       const data = await getPendingRewardScholars();
       setPendingRewards(data);
     } catch {
       setPendingRewards([]);
+    } finally {
+      setRewardsLoading(false);
     }
   };
 
@@ -69,7 +75,9 @@ export default function AdminDashboard() {
   const handleMint = async (scholar: Scholar) => {
     if (!wallet || !scholar.id) return;
     setMintingId(scholar.id);
+    // Clear any prior error or success for this scholar
     setRowErrors(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
+    setMintSuccesses(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
     try {
       const config = await getUniversityConfig();
       const { txHash: mintTxHash, policyId, assetName } = await mintScholarNFT(wallet, scholar, config.badgeIPFSUri);
@@ -77,7 +85,7 @@ export default function AdminDashboard() {
         await updateScholarPolicyId(scholar.id, policyId, assetName);
         if (!config.nftPolicyId) await updateNftPolicyId(policyId);
       } catch (dbErr) { console.error(dbErr); }
-      setRowErrors(prev => ({ ...prev, [`mint_${scholar.id}`]: `Minted ✓  tx: ${mintTxHash.slice(0, 14)}...` }));
+      setMintSuccesses(prev => ({ ...prev, [scholar.id!]: mintTxHash }));
       refresh();
     } catch (err: unknown) {
       setRowErrors(prev => ({ ...prev, [scholar.id!]: parseTxError(err) }));
@@ -180,13 +188,19 @@ export default function AdminDashboard() {
                 mintingId={mintingId}
               />
             )}
+
+            {/* Mint success banners — use TxHashLink for third-party verifiability */}
+            {Object.entries(mintSuccesses).map(([scholarId, hash]) => (
+              <div key={scholarId} className="flex items-center gap-3 text-xs bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+                <span className="text-green-400 font-medium">Scholar ID Minted ✓</span>
+                <TxHashLink txHash={hash} label={`${hash.slice(0, 14)}...`} />
+              </div>
+            ))}
+
+            {/* Transaction error banners */}
             {Object.entries(rowErrors).map(([id, msg]) => (
-              <div key={id} className={`text-xs rounded-lg px-3 py-2 ${
-                id.startsWith("mint_")
-                  ? "text-green-400 bg-green-500/10 border border-green-500/20"
-                  : "text-red-400 bg-red-500/10 border border-red-500/20"
-              }`}>
-                {id.startsWith("mint_") ? msg : `Transaction error: ${msg}`}
+              <div key={id} className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                Transaction error: {msg}
               </div>
             ))}
           </div>

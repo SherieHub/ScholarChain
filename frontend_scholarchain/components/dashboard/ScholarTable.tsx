@@ -1,6 +1,7 @@
 import type { Scholar } from "@/types";
 import StatusBadge from "@/components/ui/StatusBadge";
 import TxHashLink from "@/components/transparency/TxHashLink";
+import MintNFTButton from "@/components/dashboard/MintNFTButton";
 import { shortenAddress } from "@/lib/utils/addressUtils";
 
 interface ScholarTableProps {
@@ -85,24 +86,18 @@ export default function ScholarTable({
                 )}
               </td>
               <td className="px-4 py-3">
-                {mintingId === scholar.id ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-purple-400 text-xs">Minting NFT...</span>
-                  </div>
-                ) : processingId === scholar.id ? (
+                {processingId === scholar.id ? (
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
                     <span className="text-blue-400 text-xs">Sending...</span>
                   </div>
                 ) : scholar.status === "Pending" ? (
-                  <button
-                    onClick={() => onMint(scholar)}
+                  <MintNFTButton
+                    scholar={scholar}
+                    onMint={onMint}
+                    isMinting={mintingId === scholar.id}
                     disabled={mintingId !== null || processingId !== null}
-                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors"
-                  >
-                    Mint Scholar ID 🎖️
-                  </button>
+                  />
                 ) : scholar.status === "Approved" && scholar.lastPaidTxHash ? (
                   <span className="text-green-400 text-xs font-medium">Paid ✓</span>
                 ) : scholar.status === "Approved" ? (

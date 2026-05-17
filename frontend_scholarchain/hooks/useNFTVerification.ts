@@ -1,8 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useWallet } from "@meshsdk/react";
-import { toHex } from "@meshsdk/core";
 import { verifyScholarBadge } from "@/lib/mesh/verifyNFTOwnership";
+
+function toHex(text: string): string {
+  return Array.from(new TextEncoder().encode(text))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 import { getScholarByWalletAddress } from "@/lib/firebase/scholars";
 import type { Scholar } from "@/types";
 

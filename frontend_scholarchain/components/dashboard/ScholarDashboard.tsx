@@ -4,9 +4,15 @@ import TxHashLink from "@/components/transparency/TxHashLink";
 import AchievementSubmitForm from "@/components/forms/AchievementSubmitForm";
 import AchievementStatusCard from "@/components/ui/AchievementStatusCard";
 
+function ipfsToGateway(uri: string): string {
+  if (uri.startsWith("ipfs://")) return `https://ipfs.io/ipfs/${uri.slice(7)}`;
+  return uri;
+}
+
 interface ScholarDashboardProps {
   scholar: Scholar;
   walletBalance: string;
+  badgeImageUri?: string;
   onDisconnect: () => void;
   onSubmitAchievement?: (data: { subject: string; grade: string; proofLink: string }) => Promise<void>;
   isSubmittingAchievement?: boolean;
@@ -15,10 +21,12 @@ interface ScholarDashboardProps {
 export default function ScholarDashboard({
   scholar,
   walletBalance,
+  badgeImageUri,
   onDisconnect,
   onSubmitAchievement,
   isSubmittingAchievement = false,
 }: ScholarDashboardProps) {
+  const badgeGatewayUrl = badgeImageUri ? ipfsToGateway(badgeImageUri) : null;
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -86,8 +94,20 @@ export default function ScholarDashboard({
         <div className="bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5 flex flex-col gap-3">
           <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider">Scholar Badge NFT</h3>
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-600/30 to-indigo-600/30 border border-blue-500/20 flex items-center justify-center text-2xl">
-              🎖️
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-600/30 to-indigo-600/30 border border-blue-500/20 flex items-center justify-center overflow-hidden text-2xl shrink-0">
+              {badgeGatewayUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={badgeGatewayUrl}
+                  alt="Scholar Badge NFT"
+                  className="w-full h-full object-cover"
+                  onError={e => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                    (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty("display", "flex");
+                  }}
+                />
+              ) : null}
+              <span style={{ display: badgeGatewayUrl ? "none" : "flex" }}>🎖️</span>
             </div>
             <div>
               <p className="text-white font-medium text-sm">{scholar.name} — Scholar Badge</p>
