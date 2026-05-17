@@ -1,34 +1,52 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useWallet } from "@meshsdk/react";
 import { addScholar } from "@/lib/firebase/scholars";
+import { isValidPreprodAddress, shortenAddress, getWalletAddressBech32 } from "@/lib/utils/addressUtils";
 
 function toHex(text: string): string {
   return Array.from(new TextEncoder().encode(text))
     .map(b => b.toString(16).padStart(2, "0"))
     .join("");
 }
-import { isValidPreprodAddress, shortenAddress } from "@/lib/utils/addressUtils";
-import WalletGate from "@/components/wallet/WalletGate";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
 function ApplicationFormInner() {
-  const { wallet } = useWallet();
+  const { wallet, name: walletName } = useWallet();
   const [name, setName] = useState("");
   const [course, setCourse] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
   const [formState, setFormState] = useState<FormState>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [submittedAddress, setSubmittedAddress] = useState("");
+  const [addressChanged, setAddressChanged] = useState(false);
+
+  // Track the address that was active when the user started filling the form
+  const lockedAddressRef = useRef<string>("");
 
   useEffect(() => {
     if (!wallet) return;
-    wallet.getUsedAddresses().then(addrs => {
-      if (addrs.length > 0) setWalletAddress(addrs[0]);
-      else wallet.getChangeAddress().then(setWalletAddress);
-    }).catch(() => {});
+    getWalletAddressBech32(wallet).then(addr => {
+      if (addr) setWalletAddress(addr);
+    });
   }, [wallet]);
+
+  // Detect mid-session address change — warn the user if the form has content
+  useEffect(() => {
+    if (!walletAddress) return;
+    const hasContent = name.trim().length > 0 || course.trim().length > 0;
+    if (!lockedAddressRef.current) {
+      lockedAddressRef.current = walletAddress;
+      return;
+    }
+    if (hasContent && walletAddress !== lockedAddressRef.current) {
+      setAddressChanged(true);
+    } else {
+      setAddressChanged(false);
+      lockedAddressRef.current = walletAddress;
+    }
+  }, [walletAddress, name, course]);
 
   const validate = (): string | null => {
     if (name.trim().length < 3) return "Full name must be at least 3 characters.";
@@ -38,7 +56,7 @@ function ApplicationFormInner() {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const err = validate();
     if (err) { setErrorMsg(err); return; }
@@ -72,6 +90,8 @@ function ApplicationFormInner() {
     setName("");
     setCourse("");
     setErrorMsg("");
+    setAddressChanged(false);
+    lockedAddressRef.current = walletAddress;
     setFormState("idle");
   };
 
@@ -89,10 +109,7 @@ function ApplicationFormInner() {
           <p className="text-slate-400">Status: <span className="text-yellow-300 font-medium">Pending</span></p>
           <p className="text-slate-400">Wallet on file: <span className="font-mono text-slate-300">{shortenAddress(submittedAddress)}</span></p>
         </div>
-        <button
-          onClick={reset}
-          className="text-sm text-blue-400 hover:text-blue-300 underline self-start transition-colors"
-        >
+        <button onClick={reset} className="text-sm text-blue-400 hover:text-blue-300 underline self-start transition-colors">
           Submit another application
         </button>
       </div>
@@ -100,8 +117,36 @@ function ApplicationFormInner() {
   }
 
   return (
-    <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-2xl p-6">
-      <h2 className="text-lg font-semibold text-white mb-5">Scholarship Application</h2>
+    <div className="bg-white/[0.03] backdrop-blur-md border border-white/[0.08] rounded-2xl p-6 flex flex-col gap-5">
+
+      {/* Connected wallet indicator chip */}
+      {walletAddress && (
+        <div className="flex items-center gap-2 bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+          <span className="text-xs text-slate-400">
+            Submitting as{" "}
+            <span className="font-mono text-slate-200">{shortenAddress(walletAddress)}</span>
+            {walletName && (
+              <span className="text-slate-500 capitalize"> · {walletName}</span>
+            )}
+          </span>
+        </div>
+      )}
+
+      {/* Address-changed warning */}
+      {addressChanged && (
+        <div className="flex items-start gap-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-xl px-3 py-3">
+          <span className="text-yellow-400 text-base shrink-0">⚠️</span>
+          <p className="text-yellow-300 text-xs leading-relaxed">
+            Your connected wallet changed. This application will now be submitted from{" "}
+            <span className="font-mono">{shortenAddress(walletAddress)}</span>.
+            Continue if this is correct, or switch back to your original wallet.
+          </p>
+        </div>
+      )}
+
+      <h2 className="text-lg font-semibold text-white">Scholarship Application</h2>
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-slate-300">Full Name</label>
@@ -147,10 +192,11 @@ function ApplicationFormInner() {
           disabled={formState === "submitting" || !walletAddress}
           className="mt-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:opacity-60 text-white font-medium rounded-xl px-4 py-2.5 text-sm transition-colors"
         >
-          {formState === "submitting" ? "Signing & Submitting..." : "Submit Application"}
+          {formState === "submitting" ? "Signing & Submitting..." : "Sign & Submit Application"}
         </button>
+
         <p className="text-xs text-slate-600 text-center">
-          Your wallet will prompt you to sign the application as proof of ownership.
+          Your wallet will ask you to sign as proof of ownership. No ADA is spent.
         </p>
       </form>
     </div>
@@ -158,9 +204,5 @@ function ApplicationFormInner() {
 }
 
 export default function ScholarApplicationForm() {
-  return (
-    <WalletGate message="Connect your Cardano wallet to apply. Your wallet address will be auto-filled and verified.">
-      <ApplicationFormInner />
-    </WalletGate>
-  );
+  return <ApplicationFormInner />;
 }

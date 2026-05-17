@@ -19,7 +19,7 @@ function SponsorFormInner() {
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const err = validate();
     if (err) { setErrorMsg(err); return; }

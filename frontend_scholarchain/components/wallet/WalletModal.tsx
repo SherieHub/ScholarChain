@@ -4,12 +4,7 @@ import { useState, useEffect } from "react";
 import { useWallet } from "@meshsdk/react";
 import { BrowserWallet } from "@meshsdk/core";
 import {
-  X,
-  Wallet,
-  LogOut,
-  ChevronDown,
-  CheckCircle,
-  RefreshCw,
+  X, Wallet, LogOut, ChevronDown, CheckCircle, RefreshCw, AlertTriangle,
 } from "lucide-react";
 
 interface WalletInfo {
@@ -18,6 +13,8 @@ interface WalletInfo {
 }
 
 type ModalState = "idle" | "selecting" | "verifying";
+
+const LAST_WALLET_KEY = "sc_last_wallet";
 
 function shortenAddr(addr: string) {
   return `${addr.slice(0, 16)}...${addr.slice(-8)}`;
@@ -29,11 +26,11 @@ export default function WalletModal() {
   const [wallets, setWallets] = useState<WalletInfo[]>([]);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [verifyAddress, setVerifyAddress] = useState<string>("");
+  const [verifyBalance, setVerifyBalance] = useState<string>("");
+  const [networkError, setNetworkError] = useState<string | null>(null);
 
   // Re-scan wallet extensions every time the selecting modal opens.
-  // Scanning only on mount misses extensions installed or activated after page load.
-  // Filter to known Cardano wallets — Brave and other browsers inject non-Cardano
-  // extensions into window.cardano which BrowserWallet.getAvailableWallets() picks up.
+  // Filter to known Cardano wallets only.
   useEffect(() => {
     if (modalState !== "selecting") return;
     const CARDANO_WALLETS = ["eternl", "nami", "flint", "typhon", "nufi", "gerowallet", "begin", "vespr", "lace"];
@@ -48,48 +45,71 @@ export default function WalletModal() {
   // Close modal on Escape
   useEffect(() => {
     if (modalState === "idle") return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setModalState("idle");
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setModalState("idle"); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [modalState]);
 
   const handleConnect = async (walletName: string) => {
     setConnecting(walletName);
+    setNetworkError(null);
     try {
-      // Step 1: connect via MeshJS (updates global wallet context)
       await connect(walletName);
-
-      // Step 2: get a fresh BrowserWallet instance to read the address immediately.
-      // We can't rely on useWallet()'s `wallet` ref here because React state
-      // updates are async — BrowserWallet.enable() gives us the live instance now.
       const bw = await BrowserWallet.enable(walletName);
 
-      // Step 3: fetch address (fall back to change address for new wallets)
+      // ── Network guard: block Mainnet connections ────────────────────────
+      const networkId = await bw.getNetworkId();
+      if (networkId === 1) {
+        // Mainnet — disconnect immediately and show a blocking error
+        disconnect();
+        setNetworkError(
+          `"${walletName}" is set to Mainnet. Switch to Preprod Testnet in your wallet settings and try again.`
+        );
+        setConnecting(null);
+        return;
+      }
+
+      // ── Fetch address and balance for the verify screen ─────────────────
       const used = await bw.getUsedAddresses();
-      const addr =
-        used.length > 0 ? used[0] : await bw.getChangeAddress();
+      const addr = used.length > 0 ? used[0] : await bw.getChangeAddress();
+      const lovelace = await bw.getLovelace();
+      const ada = lovelace ? (Number(lovelace) / 1_000_000).toFixed(2) : "—";
 
       setVerifyAddress(addr);
+      setVerifyBalance(ada);
+
+      // ── Returning-user shortcut ─────────────────────────────────────────
+      // If the same wallet name was used last time, skip the confirm screen
+      const lastWallet = localStorage.getItem(LAST_WALLET_KEY);
+      if (lastWallet === walletName) {
+        localStorage.setItem(LAST_WALLET_KEY, walletName);
+        setModalState("idle");
+        setConnecting(null);
+        return;
+      }
+
       setModalState("verifying");
     } catch {
-      // User rejected or wallet error — stay on the selecting screen
       setModalState("selecting");
     } finally {
       setConnecting(null);
     }
   };
 
+  const handleConfirm = () => {
+    localStorage.setItem(LAST_WALLET_KEY, connectedName ?? "");
+    setModalState("idle");
+  };
+
   const handleDisconnectAndRetry = () => {
     setVerifyAddress("");
+    setVerifyBalance("");
     setModalState("selecting");
   };
 
-  const handleConfirm = () => setModalState("idle");
-
   const handleDisconnect = () => {
     disconnect();
+    localStorage.removeItem(LAST_WALLET_KEY);
     setModalState("idle");
   };
 
@@ -97,7 +117,6 @@ export default function WalletModal() {
   if (modalState === "idle" && connected) {
     return (
       <div className="flex items-center gap-2">
-        {/* Connected status pill */}
         <div
           className="flex items-center gap-2 rounded-xl px-3 py-1.5 text-sm backdrop-blur-sm"
           style={{
@@ -106,20 +125,12 @@ export default function WalletModal() {
             boxShadow: "0 0 12px rgba(52,211,153,0.1)",
           }}
         >
-          {/* Pulsing green dot */}
           <span className="relative flex items-center justify-center w-2.5 h-2.5">
-            <span
-              className="absolute inline-flex w-full h-full rounded-full bg-emerald-400"
-              style={{ animation: "dot-ping 1.8s ease-out infinite" }}
-            />
+            <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400" style={{ animation: "dot-ping 1.8s ease-out infinite" }} />
             <span className="relative w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
           </span>
-          <span className="text-emerald-300 font-medium text-xs capitalize">
-            {connectedName}
-          </span>
+          <span className="text-emerald-300 font-medium text-xs capitalize">{connectedName}</span>
         </div>
-
-        {/* Disconnect button */}
         <button
           onClick={handleDisconnect}
           title="Disconnect wallet"
@@ -139,53 +150,33 @@ export default function WalletModal() {
         onClick={() => setModalState("selecting")}
         className="relative overflow-hidden flex items-center gap-2 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-all duration-300 hover:scale-[1.05] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
         style={{
-          background:
-            "linear-gradient(135deg, #1d4ed8 0%, #4f46e5 40%, #7c3aed 70%, #1d4ed8 100%)",
+          background: "linear-gradient(135deg, #1d4ed8 0%, #4f46e5 40%, #7c3aed 70%, #1d4ed8 100%)",
           backgroundSize: "300% 300%",
           animation: "gradient-x 4s ease infinite, btn-glow 2.5s ease-in-out infinite",
           border: "1px solid rgba(255,255,255,0.15)",
         }}
         aria-label="Open wallet connection modal"
       >
-        {/* Shimmer sweep */}
         <span
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none"
           style={{
-            background:
-              "linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.14) 50%, transparent 65%)",
+            background: "linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.14) 50%, transparent 65%)",
             animation: "shimmer-sweep 3s ease-in-out infinite",
           }}
         />
-
-        <Wallet
-          className="relative w-4 h-4"
-          style={{ animation: "icon-float 2.2s ease-in-out infinite" }}
-          aria-hidden="true"
-        />
+        <Wallet className="relative w-4 h-4" style={{ animation: "icon-float 2.2s ease-in-out infinite" }} aria-hidden="true" />
         <span className="relative">Connect Wallet</span>
-        <ChevronDown
-          className="relative w-3.5 h-3.5 opacity-70"
-          aria-hidden="true"
-        />
+        <ChevronDown className="relative w-3.5 h-3.5 opacity-70" aria-hidden="true" />
       </button>
     );
   }
 
   // ── Modal (selecting or verifying) ───────────────────────────────────────
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      {/* Blur backdrop */}
-      <div
-        className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
-        onClick={() => setModalState("idle")}
-      />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+      <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" onClick={() => setModalState("idle")} />
 
-      {/* Modal card */}
       <div className="relative z-10 w-full max-w-sm bg-slate-900 border border-white/[0.10] rounded-2xl shadow-2xl p-6 flex flex-col gap-4">
 
         {/* ── SELECTING ─────────────────────────────── */}
@@ -193,39 +184,30 @@ export default function WalletModal() {
           <>
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-white font-semibold text-base">
-                  Connect a Wallet
-                </h2>
-                <p className="text-slate-500 text-xs mt-0.5">
-                  Select your Cardano wallet extension
-                </p>
+                <h2 className="text-white font-semibold text-base">Connect a Wallet</h2>
+                <p className="text-slate-500 text-xs mt-0.5">Select your Cardano wallet extension</p>
               </div>
-              <button
-                onClick={() => setModalState("idle")}
-                aria-label="Close"
-                className="text-slate-500 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
-              >
+              <button onClick={() => setModalState("idle")} aria-label="Close" className="text-slate-500 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
+            {/* Network mismatch error */}
+            {networkError && (
+              <div className="flex items-start gap-2.5 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-3">
+                <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-red-300 text-xs leading-relaxed">{networkError}</p>
+              </div>
+            )}
+
             {wallets.length === 0 ? (
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 text-center">
                 <Wallet className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-                <p className="text-slate-400 text-sm font-medium">
-                  No wallets detected
-                </p>
+                <p className="text-slate-400 text-sm font-medium">No wallets detected</p>
                 <p className="text-slate-600 text-xs mt-1">
                   Install{" "}
-                  <a
-                    href="https://eternl.io"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:underline"
-                  >
-                    Eternl
-                  </a>{" "}
-                  and switch to{" "}
+                  <a href="https://eternl.io" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Eternl</a>
+                  {" "}and switch to{" "}
                   <span className="text-slate-400">Preprod Testnet</span>.
                 </p>
               </div>
@@ -240,23 +222,15 @@ export default function WalletModal() {
                     >
                       {w.icon ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={w.icon}
-                          alt={w.name}
-                          className="w-8 h-8 rounded-lg object-contain"
-                        />
+                        <img src={w.icon} alt={w.name} className="w-8 h-8 rounded-lg object-contain" />
                       ) : (
                         <div className="w-8 h-8 rounded-lg bg-white/[0.08] flex items-center justify-center">
                           <Wallet className="w-4 h-4 text-slate-400" />
                         </div>
                       )}
-                      <span className="text-white text-sm font-medium capitalize flex-1 text-left">
-                        {w.name}
-                      </span>
+                      <span className="text-white text-sm font-medium capitalize flex-1 text-left">{w.name}</span>
                       {connecting === w.name ? (
-                        <span className="text-xs text-blue-400 animate-pulse">
-                          Connecting...
-                        </span>
+                        <span className="text-xs text-blue-400 animate-pulse">Connecting...</span>
                       ) : (
                         <ChevronDown className="w-4 h-4 text-slate-600 -rotate-90 group-hover:text-slate-300 transition-colors" />
                       )}
@@ -267,8 +241,7 @@ export default function WalletModal() {
             )}
 
             <p className="text-slate-600 text-xs text-center">
-              Make sure your wallet is on{" "}
-              <span className="text-slate-400">Preprod Testnet</span>
+              Make sure your wallet is on <span className="text-yellow-400 font-medium">Preprod Testnet</span>
             </p>
           </>
         )}
@@ -277,14 +250,8 @@ export default function WalletModal() {
         {modalState === "verifying" && (
           <>
             <div className="flex items-center justify-between">
-              <h2 className="text-white font-semibold text-base">
-                Confirm Connection
-              </h2>
-              <button
-                onClick={handleConfirm}
-                aria-label="Close"
-                className="text-slate-500 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors"
-              >
+              <h2 className="text-white font-semibold text-base">Confirm Connection</h2>
+              <button onClick={handleConfirm} aria-label="Close" className="text-slate-500 hover:text-white p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -294,30 +261,35 @@ export default function WalletModal() {
                 <CheckCircle className="w-7 h-7 text-emerald-400" />
               </div>
               <div className="text-center">
-                <p className="text-white font-medium capitalize">
-                  {connectedName} Connected
-                </p>
-                <p className="text-slate-500 text-xs mt-0.5">
-                  Verify this is the correct account before proceeding
-                </p>
+                <p className="text-white font-medium capitalize">{connectedName} Connected</p>
+                <p className="text-slate-500 text-xs mt-0.5">Verify this is the correct account before proceeding</p>
               </div>
             </div>
 
-            <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4">
-              <p className="text-slate-500 text-xs uppercase tracking-wide mb-1.5">
-                Connected Address
-              </p>
-              <p className="text-slate-200 font-mono text-xs break-all leading-relaxed">
-                {verifyAddress || "Fetching address..."}
-              </p>
-              {verifyAddress && (
-                <p className="text-slate-500 text-xs mt-2">
-                  Short:{" "}
-                  <span className="text-slate-300">
-                    {shortenAddr(verifyAddress)}
-                  </span>
+            <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 flex flex-col gap-3">
+              <div>
+                <p className="text-slate-500 text-xs uppercase tracking-wide mb-1">Connected Address</p>
+                <p className="text-slate-200 font-mono text-xs break-all leading-relaxed">
+                  {verifyAddress || "Fetching address..."}
                 </p>
-              )}
+                {verifyAddress && (
+                  <p className="text-slate-500 text-xs mt-1">
+                    Short: <span className="text-slate-300">{shortenAddr(verifyAddress)}</span>
+                  </p>
+                )}
+              </div>
+              {/* Balance display — helps admin confirm the right funded wallet */}
+              <div className="border-t border-white/[0.06] pt-3 flex items-center justify-between">
+                <p className="text-slate-500 text-xs uppercase tracking-wide">Balance</p>
+                <p className="text-emerald-400 font-semibold text-sm">
+                  {verifyBalance !== "" ? `${verifyBalance} tADA` : "—"}
+                </p>
+              </div>
+              {/* Preprod badge */}
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                <span className="text-yellow-400 text-xs font-medium">Preprod Testnet</span>
+              </div>
             </div>
 
             <div className="flex flex-col gap-2">

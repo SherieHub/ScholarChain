@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useScholarData } from "@/hooks/useScholarData";
 import ScholarTable, { SkeletonRow } from "@/components/dashboard/ScholarTable";
 import PendingRewardsTable from "@/components/dashboard/PendingRewardsTable";
@@ -28,8 +28,36 @@ type TxState = "idle" | "processing" | "success" | "error";
 type ActiveTab = "table" | "manual" | "rewards" | "treasury";
 
 export default function AdminDashboard() {
-  const { wallet } = useWalletConnection();
+  const { wallet, address, connected, disconnect } = useWalletConnection();
   const { scholars, loading, error, refresh } = useScholarData("all");
+
+  const [wrongWallet, setWrongWallet] = useState<string | null>(null);
+  // Prevents a flash of dashboard content before the wallet check resolves
+  const [walletChecked, setWalletChecked] = useState(false);
+
+  // Validate connected wallet against the stored admin address in Firestore config
+  useEffect(() => {
+    if (!connected || !address) {
+      setWrongWallet(null);
+      setWalletChecked(false);
+      return;
+    }
+    setWalletChecked(false);
+    getUniversityConfig()
+      .then(config => {
+        if (
+          config.adminWalletAddress &&
+          config.adminWalletAddress.trim() !== "" &&
+          address.trim() !== config.adminWalletAddress.trim()
+        ) {
+          setWrongWallet(config.adminWalletAddress);
+        } else {
+          setWrongWallet(null);
+        }
+      })
+      .catch(() => setWrongWallet(null)) // config missing → allow through
+      .finally(() => setWalletChecked(true));
+  }, [connected, address]);
 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [mintingId, setMintingId] = useState<string | null>(null);
@@ -137,7 +165,9 @@ export default function AdminDashboard() {
       <div className="pointer-events-none absolute bottom-0 right-1/4 w-[300px] h-[300px] rounded-full bg-indigo-600/8 blur-3xl" />
 
       <div className="relative z-10 w-full max-w-5xl flex flex-col gap-6">
-        <BackButton />
+        <BackButton href="/" />
+
+        <WalletGate role="admin" message="Connect your admin wallet to manage scholars and send scholarships.">
 
         <div>
           <h1 className="text-3xl font-bold text-gradient-animated mb-1">Admin Dashboard</h1>
@@ -146,7 +176,46 @@ export default function AdminDashboard() {
 
         <WalletStatus />
 
-        <WalletGate message="Connect your admin wallet to manage scholars and send scholarships.">
+        {/* Wallet check in progress — prevent flash of dashboard content */}
+        {connected && !walletChecked ? (
+          <div className="flex items-center gap-3 py-10 justify-center text-slate-500 text-sm">
+            <div className="h-4 w-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin" />
+            Verifying wallet…
+          </div>
+        ) : wrongWallet ? (
+          /* Wrong wallet — full blocking screen, no dashboard content shown */
+          <div className="flex flex-col items-center gap-6 py-12 px-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-3xl">
+              🚫
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white mb-2">Wrong Wallet Connected</h2>
+              <p className="text-slate-400 text-sm leading-relaxed max-w-sm">
+                This dashboard is reserved for the designated admin wallet.
+                Disconnect and reconnect with the correct wallet to proceed.
+              </p>
+            </div>
+            <div className="w-full max-w-sm flex flex-col gap-2">
+              <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-left">
+                <p className="text-xs text-slate-500 mb-1">Currently Connected</p>
+                <p className="font-mono text-xs text-red-400 break-all">{address}</p>
+              </div>
+              <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-left">
+                <p className="text-xs text-slate-500 mb-1">Expected Admin Wallet</p>
+                <p className="font-mono text-xs text-slate-400">
+                  {wrongWallet.slice(0, 20)}…
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={disconnect}
+              className="bg-red-600 hover:bg-red-500 text-white text-sm font-medium px-6 py-2.5 rounded-xl transition-colors"
+            >
+              Disconnect &amp; Switch Wallet
+            </button>
+          </div>
+        ) : (
+          <>
 
         {error && (
           <div role="alert" className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-300 text-sm backdrop-blur-sm">
@@ -237,6 +306,9 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === "treasury" && <TreasuryMintPanel />}
+
+          </> /* closes the normal-dashboard branch of the ternary */
+        )} {/* closes the walletChecked / wrongWallet ternary */}
 
         </WalletGate>
       </div>

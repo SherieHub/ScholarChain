@@ -1,5 +1,6 @@
 import { Transaction, ForgeScript, resolveScriptHash } from "@meshsdk/core";
 import type { Mint } from "@meshsdk/core";
+import { getWalletAddressBech32 } from "@/lib/utils/addressUtils";
 
 const TOKEN_NAME = "SCHOLAR";
 
@@ -7,9 +8,7 @@ export async function mintTokenSupply(
   wallet: any,
   supplyAmount: number
 ): Promise<{ txHash: string; policyId: string; tokenName: string; supplyMinted: number }> {
-  const usedAddresses = await wallet.getUsedAddresses();
-  const address =
-    usedAddresses.length > 0 ? usedAddresses[0] : await wallet.getChangeAddress();
+  const address = await getWalletAddressBech32(wallet);
 
   const forgingScript = ForgeScript.withOneSignature(address);
   const policyId = resolveScriptHash(forgingScript);

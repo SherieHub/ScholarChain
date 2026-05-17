@@ -18,7 +18,7 @@ export default function WalletStatus() {
   return (
     <div className="flex items-center gap-3 bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2 text-sm backdrop-blur-sm">
       <span className="text-yellow-400 text-xs font-semibold bg-yellow-500/10 border border-yellow-500/20 px-2 py-0.5 rounded-full">
-        TESTNET
+        PREPROD
       </span>
       <span className="text-slate-400 hidden sm:inline">
         {name ?? "Wallet"}

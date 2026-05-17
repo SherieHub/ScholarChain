@@ -15,7 +15,7 @@ export default function TransparencyPage() {
   return (
     <main className="flex flex-col items-center py-12 px-4">
       <div className="w-full max-w-4xl flex flex-col gap-8">
-        <BackButton />
+        <BackButton href="/" />
 
         <div>
           <h1 className="text-3xl font-bold mb-1">Transparency Dashboard</h1>

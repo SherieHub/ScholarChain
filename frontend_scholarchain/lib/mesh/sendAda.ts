@@ -1,45 +1,73 @@
 import { Transaction } from "@meshsdk/core";
 import { adaToLovelace } from "@/lib/utils/lovelaceConversion";
-import { isValidPreprodAddress } from "@/lib/utils/addressUtils";
+import { isValidPreprodAddress, normalizeToB32, getWalletAddressBech32 } from "@/lib/utils/addressUtils";
+import { submitTransaction } from "@/lib/mesh/submitTx";
+import { filterPendingSpent, markUtxosSpent } from "@/lib/mesh/pendingUtxos";
 
-/**
- * Sends ADA from the connected Admin wallet to a specified recipient address.
- * Converts human-readable ADA to Lovelaces, builds the MeshJS transaction,
- * triggers the wallet signing popup, and submits to Cardano Preprod.
- *
- * @param wallet - The connected BrowserWallet instance from useWallet()
- * @param recipientAddress - The destination Preprod wallet address
- * @param adaAmount - ADA amount as typed by the Admin (string from form input)
- * @returns The TxHash string if submission succeeds
- * @throws Error with a user-friendly message on any failure
- */
 export async function sendADA(
-  wallet: any, // BrowserWallet type from @meshsdk/core
+  wallet: any,
   recipientAddress: string,
   adaAmount: string,
 ): Promise<string> {
-  // Step 1: Validate inputs before touching MeshJS
   if (!wallet)
     throw new Error("Wallet not connected. Please connect your wallet first.");
-  if (!isValidPreprodAddress(recipientAddress)) {
+
+  const normalizedAddress = normalizeToB32(recipientAddress);
+  if (!isValidPreprodAddress(normalizedAddress)) {
     throw new Error(
       "Invalid recipient address. Preprod addresses must start with 'addr_test1'.",
     );
   }
 
-  // Step 2: Convert ADA input to Lovelace string (may throw on invalid input)
   const lovelaceAmount = adaToLovelace(adaAmount);
 
-  // Step 3: Build the transaction using MeshJS Transaction class
+  // Resolve the sender address for change and to bypass broken wallet methods
+  const changeAddress = await getWalletAddressBech32(wallet);
+
   const tx = new Transaction({ initiator: wallet });
-  tx.sendLovelace({ address: recipientAddress }, lovelaceAmount);
+  tx.sendLovelace({ address: normalizedAddress }, lovelaceAmount);
 
-  // Step 4: Build and sign — triggers the browser wallet popup
+  // MeshJS beta workaround: pre-set change address and UTxOs before build()
+  // to bypass broken Address.fromString calls. See mintNFT.ts for explanation.
+  tx.setChangeAddress(changeAddress);
+  // wallet.getUtxos() (CIP-30 pass-through) returns raw CBOR hex strings.
+  // wallet.getUtxosMesh() deserializes them into { input, output } objects.
+  let utxos: any[] = [];
+  try {
+    const raw: any[] = typeof wallet.getUtxosMesh === "function"
+      ? await wallet.getUtxosMesh()
+      : await wallet.getUtxos() ?? [];
+    utxos = filterPendingSpent(
+      raw
+        .filter(
+          (u: any) =>
+            u != null &&
+            u.input != null &&
+            u.input.txHash != null &&
+            u.output != null &&
+            u.output.address
+        )
+        .map((u: any) => ({
+          ...u,
+          input: { ...u.input, txHash: String(u.input.txHash) },
+        }))
+    );
+  } catch {
+    throw new Error(
+      "Failed to read wallet UTxOs. Ensure your wallet is connected and has tADA on Preprod Testnet."
+    );
+  }
+  if (utxos.length === 0) {
+    throw new Error(
+      "No spendable UTxOs found. Please ensure you have tADA in your Preprod wallet."
+    );
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (tx as any).txBuilder.meshTxBuilderBody.extraInputs = utxos;
+
   const unsignedTx = await tx.build();
-  const signedTx = await wallet.signTx(unsignedTx);
-
-  // Step 5: Submit the signed transaction to Cardano Preprod Testnet
-  const txHash = await wallet.submitTx(signedTx);
-
+  const witnessSet = await wallet.signTx(unsignedTx);
+  const txHash = await submitTransaction(unsignedTx, witnessSet);
+  markUtxosSpent(utxos);
   return txHash;
 }
