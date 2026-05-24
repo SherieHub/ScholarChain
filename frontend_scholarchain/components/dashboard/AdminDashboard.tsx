@@ -12,15 +12,17 @@ import ErrorMessage from "@/components/ui/ErrorMessage";
 import BackButton from "@/components/ui/BackButton";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { sendADA } from "@/lib/mesh/sendAda";
-import { markScholarAsPaid, updateScholarPolicyId, getPendingRewardScholars, markRewardAsPaid } from "@/lib/firebase/scholars";
+import { updateScholarPolicyId, getPendingRewardScholars, markRewardAsPaid } from "@/lib/firebase/scholars";
+import { getScholarshipsByCurrentSemester, approveScholarship, markScholarshipPaid, expireStaleScholarships } from "@/lib/firebase/scholarships";
 import { parseTxError } from "@/lib/mesh/errorHandler";
 import { getUniversityConfig, updateNftPolicyId } from "@/lib/firebase/config-store";
 import { mintScholarNFT } from "@/lib/mesh/mintNFT";
-import { sendMultiAssetReward } from "@/lib/mesh/sendMultiAsset";
+import { sendTokenReward } from "@/lib/mesh/sendMultiAsset";
 import WalletStatus from "@/components/wallet/WalletStatus";
 import WalletGate from "@/components/wallet/WalletGate";
 import TxHashLink from "@/components/transparency/TxHashLink";
-import type { Scholar } from "@/types";
+import type { Scholar, Scholarship } from "@/types";
+import { getCurrentSemester } from "@/lib/utils/semesterUtils";
 
 const SCHOLARSHIP_AMOUNT_ADA = "5";
 
@@ -63,15 +65,26 @@ export default function AdminDashboard() {
   const [mintingId, setMintingId] = useState<string | null>(null);
   const [rewardProcessingId, setRewardProcessingId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
-  // Separate state for mint successes so we can render TxHashLink (not just plain text)
   const [mintSuccesses, setMintSuccesses] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<ActiveTab>("table");
   const [pendingRewards, setPendingRewards] = useState<Scholar[]>([]);
   const [rewardsLoading, setRewardsLoading] = useState(false);
+  // scholarId → current-semester scholarship record
+  const [scholarshipMap, setScholarshipMap] = useState<Map<string, Scholarship>>(new Map());
 
   const [txState, setTxState] = useState<TxState>("idle");
   const [txHash, setTxHash] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
+
+  const loadScholarships = async () => {
+    try {
+      await expireStaleScholarships();
+      const list = await getScholarshipsByCurrentSemester();
+      setScholarshipMap(new Map(list.map(s => [s.scholarId, s])));
+    } catch {
+      setScholarshipMap(new Map());
+    }
+  };
 
   const loadPendingRewards = async () => {
     setRewardsLoading(true);
@@ -85,13 +98,41 @@ export default function AdminDashboard() {
     }
   };
 
+  // Reload scholarships whenever the scholars list refreshes
+  useEffect(() => {
+    if (connected) loadScholarships();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connected, scholars]);
+
+  const handleApproveScholarship = async (scholarship: Scholarship) => {
+    if (!scholarship.id) return;
+    try {
+      await approveScholarship(scholarship.id);
+      await loadScholarships();
+    } catch (err: unknown) {
+      setRowErrors(prev => ({ ...prev, [`approve_${scholarship.scholarId}`]: parseTxError(err) }));
+    }
+  };
+
   const handleSendToScholar = async (scholar: Scholar) => {
     if (!wallet || !scholar.id) return;
+
+    // Semester guard — must have an Approved scholarship for the current semester
+    const scholarship = scholarshipMap.get(scholar.id);
+    if (!scholarship?.id || scholarship.status !== "Approved") {
+      setRowErrors(prev => ({
+        ...prev,
+        [scholar.id!]: "No approved scholarship for " + getCurrentSemester().label + ".",
+      }));
+      return;
+    }
+
     setProcessingId(scholar.id);
     setRowErrors(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
     try {
       const hash = await sendADA(wallet, scholar.walletAddress, SCHOLARSHIP_AMOUNT_ADA);
-      try { await markScholarAsPaid(scholar.id, hash); } catch (dbErr) { console.error(dbErr); }
+      await markScholarshipPaid(scholarship.id, hash);
+      await loadScholarships();
       refresh();
     } catch (err: unknown) {
       setRowErrors(prev => ({ ...prev, [scholar.id!]: parseTxError(err) }));
@@ -103,7 +144,6 @@ export default function AdminDashboard() {
   const handleMint = async (scholar: Scholar) => {
     if (!wallet || !scholar.id) return;
     setMintingId(scholar.id);
-    // Clear any prior error or success for this scholar
     setRowErrors(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
     setMintSuccesses(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
     try {
@@ -112,8 +152,14 @@ export default function AdminDashboard() {
       try {
         await updateScholarPolicyId(scholar.id, policyId, assetName);
         if (!config.nftPolicyId) await updateNftPolicyId(policyId);
+        // Minting = admin approval of identity — auto-approve the pending scholarship
+        const scholarship = scholarshipMap.get(scholar.id);
+        if (scholarship?.id && scholarship.status === "Pending") {
+          await approveScholarship(scholarship.id);
+        }
       } catch (dbErr) { console.error(dbErr); }
       setMintSuccesses(prev => ({ ...prev, [scholar.id!]: mintTxHash }));
+      await loadScholarships();
       refresh();
     } catch (err: unknown) {
       setRowErrors(prev => ({ ...prev, [scholar.id!]: parseTxError(err) }));
@@ -122,12 +168,12 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleApproveReward = async (scholar: Scholar, adaAmount: number, tokenAmount: number) => {
+  const handleApproveReward = async (scholar: Scholar, tokenAmount: number) => {
     if (!wallet || !scholar.id) return;
     setRewardProcessingId(scholar.id);
     try {
-      const { txHash: rewardTxHash } = await sendMultiAssetReward(wallet, scholar.walletAddress, adaAmount, tokenAmount);
-      await markRewardAsPaid(scholar.id, rewardTxHash, adaAmount, tokenAmount);
+      const { txHash: rewardTxHash } = await sendTokenReward(wallet, scholar.walletAddress, tokenAmount);
+      await markRewardAsPaid(scholar.id, rewardTxHash, tokenAmount);
       await loadPendingRewards();
     } catch (err: unknown) {
       setRowErrors(prev => ({ ...prev, [`reward_${scholar.id}`]: parseTxError(err) }));
@@ -253,8 +299,10 @@ export default function AdminDashboard() {
                 scholars={scholars}
                 onSend={handleSendToScholar}
                 onMint={handleMint}
+                onApproveScholarship={handleApproveScholarship}
                 processingId={processingId}
                 mintingId={mintingId}
+                scholarshipMap={scholarshipMap}
               />
             )}
 

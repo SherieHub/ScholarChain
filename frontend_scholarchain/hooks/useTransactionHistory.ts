@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { TransactionSummary } from "@/types";
 
 interface TransactionHistoryResult {
@@ -7,35 +7,38 @@ interface TransactionHistoryResult {
   totalPaidOutADA: number;
   loading: boolean;
   error: string | null;
+  refetch: () => void;
 }
 
 export function useTransactionHistory(): TransactionHistoryResult {
-  const [result, setResult] = useState<TransactionHistoryResult>({
-    transactions: [],
-    totalPaidOutADA: 0,
-    loading: true,
-    error: null,
-  });
+  const [tick, setTick] = useState(0);
+  const [transactions, setTransactions] = useState<TransactionSummary[]>([]);
+  const [totalPaidOutADA, setTotalPaidOutADA] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const refetch = useCallback(() => setTick(t => t + 1), []);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
+
     fetch("/api/transactions")
-      .then(r => r.json())
+      .then(res => {
+        if (res.status === 429) throw new Error("Rate limited — please wait a moment and refresh.");
+        if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+        return res.json();
+      })
       .then(data => {
-        setResult({
-          transactions: data.transactions ?? [],
-          totalPaidOutADA: data.totalPaidOutADA ?? 0,
-          loading: false,
-          error: null,
-        });
+        setTransactions(data.transactions ?? []);
+        setTotalPaidOutADA(data.totalPaidOutADA ?? 0);
+        setLoading(false);
       })
       .catch((err: unknown) => {
-        setResult(prev => ({
-          ...prev,
-          loading: false,
-          error: err instanceof Error ? err.message : "Failed to load transaction history.",
-        }));
+        setError(err instanceof Error ? err.message : "Failed to load transaction history.");
+        setLoading(false);
       });
-  }, []);
+  }, [tick]);
 
-  return result;
+  return { transactions, totalPaidOutADA, loading, error, refetch };
 }

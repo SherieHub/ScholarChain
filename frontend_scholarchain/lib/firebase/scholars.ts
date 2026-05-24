@@ -44,6 +44,16 @@ export async function updateScholarStatus(scholarId: string, status: ScholarStat
   await updateDoc(ref, { status, updatedAt: serverTimestamp() });
 }
 
+/** Returns true if a scholar record already exists for this wallet address. */
+export async function scholarWalletExists(walletAddress: string): Promise<boolean> {
+  const q = query(
+    collection(db, SCHOLARS_COLLECTION),
+    where("walletAddress", "==", walletAddress.trim())
+  );
+  const snapshot = await getDocs(q);
+  return !snapshot.empty;
+}
+
 /** Find a scholar by their wallet address (used in Scholar Portal auth) */
 export async function getScholarByWalletAddress(walletAddress: string): Promise<Scholar | null> {
   const q = query(
@@ -82,18 +92,16 @@ export async function getPendingRewardScholars(): Promise<Scholar[]> {
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Scholar));
 }
 
-/** Mark a scholar's achievement as paid after a confirmed multi-asset tx */
+/** Mark a scholar's achievement as paid after a confirmed token reward tx */
 export async function markRewardAsPaid(
   scholarId: string,
   txHash: string,
-  adaRewarded: number,
   tokensRewarded: number
 ): Promise<void> {
   const ref = doc(db, SCHOLARS_COLLECTION, scholarId);
   await updateDoc(ref, {
     "achievement.rewardStatus": "Paid",
     "achievement.rewardTxHash": txHash,
-    "achievement.adaRewarded": adaRewarded,
     "achievement.tokensRewarded": tokensRewarded,
     "achievement.paidAt": serverTimestamp(),
     updatedAt: serverTimestamp(),

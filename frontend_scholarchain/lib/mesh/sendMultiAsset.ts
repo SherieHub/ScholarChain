@@ -1,6 +1,5 @@
 import { Transaction } from "@meshsdk/core";
 import { getUniversityConfig } from "@/lib/firebase/config-store";
-import { adaToLovelace } from "@/lib/utils/lovelaceConversion";
 import { normalizeToB32, getWalletAddressBech32 } from "@/lib/utils/addressUtils";
 import { submitTransaction } from "@/lib/mesh/submitTx";
 import { filterPendingSpent, markUtxosSpent } from "@/lib/mesh/pendingUtxos";
@@ -9,19 +8,22 @@ import { filterPendingSpent, markUtxosSpent } from "@/lib/mesh/pendingUtxos";
 // "SCHOLAR" → 5343484f4c4152
 const SCHOLAR_ASSET_NAME_HEX = "5343484f4c4152";
 
-export async function sendMultiAssetReward(
+// Cardano requires a minimum ADA amount alongside any native token output.
+// 2 ADA satisfies the minimum UTxO rule on Preprod. This is not a reward —
+// it is a protocol requirement and is not configurable by the admin.
+const MIN_UTxO_LOVELACE = "2000000";
+
+export async function sendTokenReward(
   wallet: any,
   recipientAddress: string,
-  adaAmount: number,
   tokenAmount: number
-): Promise<{ txHash: string; adaSent: number; tokensSent: number }> {
+): Promise<{ txHash: string; tokensSent: number }> {
   const config = await getUniversityConfig();
 
   if (!config.tokenPolicyId) {
     throw new Error("SCHOLAR token has not been minted yet. Mint the token supply first.");
   }
 
-  const lovelace = adaToLovelace(adaAmount);
   // Unit format: policyId + hex(assetName) — required by Cardano ledger and MeshJS
   const tokenUnit = `${config.tokenPolicyId}${SCHOLAR_ASSET_NAME_HEX}`;
   const normalizedAddress = normalizeToB32(recipientAddress);
@@ -29,7 +31,7 @@ export async function sendMultiAssetReward(
 
   const tx = new Transaction({ initiator: wallet });
   tx.sendAssets({ address: normalizedAddress }, [
-    { unit: "lovelace", quantity: lovelace },
+    { unit: "lovelace", quantity: MIN_UTxO_LOVELACE },
     { unit: tokenUnit, quantity: String(tokenAmount) },
   ]);
 
@@ -75,5 +77,5 @@ export async function sendMultiAssetReward(
   const witnessSet = await wallet.signTx(unsignedTx);
   const txHash = await submitTransaction(unsignedTx, witnessSet);
   markUtxosSpent(utxos);
-  return { txHash, adaSent: adaAmount, tokensSent: tokenAmount };
+  return { txHash, tokensSent: tokenAmount };
 }

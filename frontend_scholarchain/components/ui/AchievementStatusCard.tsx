@@ -41,11 +41,6 @@ export default function AchievementStatusCard({ achievement }: AchievementStatus
       </div>
       {achievement.rewardStatus === "Paid" && (
         <div className="border-t border-white/[0.06] pt-3 flex flex-col gap-1.5 text-xs">
-          {achievement.adaRewarded && (
-            <p className="text-slate-400">
-              ADA Rewarded: <span className="text-green-300 font-medium">{achievement.adaRewarded} tADA</span>
-            </p>
-          )}
           {achievement.tokensRewarded && (
             <p className="text-slate-400">
               SCHOLAR Tokens: <span className="text-green-300 font-medium">{achievement.tokensRewarded}</span>

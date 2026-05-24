@@ -5,7 +5,7 @@ import RewardApprovalForm from "@/components/forms/RewardApprovalForm";
 
 interface PendingRewardsTableProps {
   scholars: Scholar[];
-  onApproveReward: (scholar: Scholar, adaAmount: number, tokenAmount: number) => Promise<void>;
+  onApproveReward: (scholar: Scholar, tokenAmount: number) => Promise<void>;
   processingId: string | null;
 }
 
@@ -66,7 +66,7 @@ export default function PendingRewardsTable({
                   ) : (
                     <RewardApprovalForm
                       scholarId={scholar.id!}
-                      onApprove={(ada, tokens) => onApproveReward(scholar, ada, tokens)}
+                      onApprove={(tokens) => onApproveReward(scholar, tokens)}
                       isProcessing={isProcessing}
                     />
                   )}

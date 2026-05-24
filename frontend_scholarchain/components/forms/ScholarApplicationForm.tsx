@@ -1,7 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useWallet } from "@meshsdk/react";
-import { addScholar } from "@/lib/firebase/scholars";
+import { addScholar, scholarWalletExists } from "@/lib/firebase/scholars";
+import { createScholarship } from "@/lib/firebase/scholarships";
 import { isValidPreprodAddress, shortenAddress, getWalletAddressBech32 } from "@/lib/utils/addressUtils";
 
 function toHex(text: string): string {
@@ -63,11 +64,30 @@ function ApplicationFormInner() {
     setErrorMsg("");
     setFormState("submitting");
     try {
+      // Duplicate guard — one scholar record per wallet address
+      const alreadyExists = await scholarWalletExists(walletAddress.trim());
+      if (alreadyExists) {
+        setErrorMsg(
+          "A scholar record already exists for this wallet. " +
+          "Go to the Scholar Portal to re-enroll for the current semester."
+        );
+        setFormState("idle");
+        return;
+      }
+
       await wallet!.signData(
         walletAddress,
         toHex(`ScholarChain application: ${name.trim()}`)
       );
-      await addScholar({ name: name.trim(), course: course.trim(), walletAddress: walletAddress.trim() });
+
+      // Create scholar identity record + first semester scholarship in parallel
+      const scholarId = await addScholar({
+        name: name.trim(),
+        course: course.trim(),
+        walletAddress: walletAddress.trim(),
+      });
+      await createScholarship(scholarId, walletAddress.trim());
+
       setSubmittedAddress(walletAddress.trim());
       setFormState("success");
     } catch (err: unknown) {
@@ -81,7 +101,7 @@ function ApplicationFormInner() {
         setFormState("idle");
       } else {
         setFormState("error");
-        setErrorMsg("Failed to submit application. Please try again.");
+        setErrorMsg(err instanceof Error ? err.message : "Failed to submit application. Please try again.");
       }
     }
   };

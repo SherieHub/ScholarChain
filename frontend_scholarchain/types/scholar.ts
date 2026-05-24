@@ -8,7 +8,6 @@ export interface Achievement {
   grade: string;
   proofLink: string;
   rewardStatus: RewardStatus;
-  adaRewarded?: number;
   tokensRewarded?: number;
   rewardTxHash?: string;
   submittedAt: Timestamp;

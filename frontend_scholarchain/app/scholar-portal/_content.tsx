@@ -7,9 +7,12 @@ import AccessDenied from "@/components/wallet/AccessDenied";
 import NFTScanningState from "@/components/wallet/NFTScanningState";
 import WalletGate from "@/components/wallet/WalletGate";
 import { submitAchievement, getScholarByWalletAddress } from "@/lib/firebase/scholars";
+import { getCurrentScholarship } from "@/lib/firebase/scholarships";
 import { getUniversityConfig } from "@/lib/firebase/config-store";
 import { getWalletAddressBech32 } from "@/lib/utils/addressUtils";
-import type { Scholar } from "@/types";
+import type { Scholar, Scholarship } from "@/types";
+import ScholarshipStatusCard from "@/components/ui/ScholarshipStatusCard";
+import ReEnrollForm from "@/components/forms/ReEnrollForm";
 
 // ── Step progress indicator ───────────────────────────────────────────────────
 type Step = 1 | 2 | 3;
@@ -74,6 +77,8 @@ function PortalContent() {
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [badgeImageUri, setBadgeImageUri] = useState<string | undefined>(undefined);
   const [isSubmittingAchievement, setIsSubmittingAchievement] = useState(false);
+  const [scholarship, setScholarship] = useState<Scholarship | null | undefined>(undefined);
+  const [scholarshipLoading, setScholarshipLoading] = useState(false);
 
   useEffect(() => {
     if (!connected || !wallet) {
@@ -85,13 +90,20 @@ function PortalContent() {
     });
   }, [connected, wallet]);
 
-  // Fetch the badge IPFS URI from config once authorised
+  // Fetch badge URI + current semester scholarship once authorised
   useEffect(() => {
-    if (portalState !== "authorized") return;
+    if (portalState !== "authorized" || !walletAddress) return;
+
     getUniversityConfig()
       .then((config) => setBadgeImageUri(config.badgeIPFSUri || undefined))
       .catch(() => setBadgeImageUri(undefined));
-  }, [portalState]);
+
+    setScholarshipLoading(true);
+    getCurrentScholarship(walletAddress)
+      .then(setScholarship)
+      .catch(() => setScholarship(null))
+      .finally(() => setScholarshipLoading(false));
+  }, [portalState, walletAddress]);
 
   const adaBalance = lovelace ? (Number(lovelace) / 1_000_000).toFixed(2) : "—";
 
@@ -233,15 +245,37 @@ function PortalContent() {
 
   // ── Authorised: scholar dashboard ─────────────────────────────────────────
   if (portalState === "authorized" && scholar) {
+    const canReEnroll =
+      !scholarshipLoading &&
+      (scholarship === null ||
+        scholarship?.status === "Expired" ||
+        scholarship?.status === "Rejected");
+
     return (
-      <ScholarDashboard
-        scholar={scholar}
-        walletBalance={adaBalance}
-        badgeImageUri={badgeImageUri}
-        onDisconnect={handleDisconnect}
-        onSubmitAchievement={handleSubmitAchievement}
-        isSubmittingAchievement={isSubmittingAchievement}
-      />
+      <div className="flex flex-col gap-6">
+        <ScholarDashboard
+          scholar={scholar}
+          walletBalance={adaBalance}
+          badgeImageUri={badgeImageUri}
+          onDisconnect={handleDisconnect}
+          onSubmitAchievement={handleSubmitAchievement}
+          isSubmittingAchievement={isSubmittingAchievement}
+        />
+
+        {/* Semester scholarship status */}
+        {scholarshipLoading ? (
+          <div className="h-20 bg-white/[0.03] border border-white/[0.08] rounded-2xl animate-pulse" />
+        ) : scholarship && !canReEnroll ? (
+          <ScholarshipStatusCard scholarship={scholarship} />
+        ) : canReEnroll ? (
+          <ReEnrollForm
+            scholar={scholar}
+            onSuccess={() =>
+              getCurrentScholarship(scholar.walletAddress).then(setScholarship)
+            }
+          />
+        ) : null}
+      </div>
     );
   }
 

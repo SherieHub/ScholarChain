@@ -1,5 +1,11 @@
-"use client";
-import { useTreasuryData } from "@/hooks/useTreasuryData";
+interface PledgeVsBalanceCardProps {
+  totalPledgedADA: number;
+  liveBalanceADA: number;
+  totalPaidOutADA: number;
+  discrepancyADA: number;
+  isAccountable: boolean;
+  loading: boolean;
+}
 
 function StatCard({
   label,
@@ -18,16 +24,23 @@ function StatCard({
       {loading ? (
         <div className="h-8 w-32 bg-white/[0.06] rounded-lg animate-pulse" />
       ) : (
-        <p className="text-2xl font-bold text-white">{value} <span className="text-sm font-normal text-slate-400">ADA</span></p>
+        <p className="text-2xl font-bold text-white">
+          {value} <span className="text-sm font-normal text-slate-400">ADA</span>
+        </p>
       )}
       <p className="text-xs text-slate-600">{source}</p>
     </div>
   );
 }
 
-export default function PledgeVsBalanceCard() {
-  const { totalPledgedADA, liveBalanceADA, totalPaidOutADA, discrepancyADA, isAccountable, loading } = useTreasuryData();
-
+export default function PledgeVsBalanceCard({
+  totalPledgedADA,
+  liveBalanceADA,
+  totalPaidOutADA,
+  discrepancyADA,
+  isAccountable,
+  loading,
+}: PledgeVsBalanceCardProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid sm:grid-cols-3 gap-4">

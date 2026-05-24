@@ -31,9 +31,6 @@ export default function AchievementSubmitForm({
           </div>
         </div>
         <div className="text-xs text-slate-400 space-y-0.5">
-          {currentAchievement.adaRewarded && (
-            <p>ADA Rewarded: <span className="text-white font-medium">{currentAchievement.adaRewarded} tADA</span></p>
-          )}
           {currentAchievement.tokensRewarded && (
             <p>SCHOLAR Tokens: <span className="text-white font-medium">{currentAchievement.tokensRewarded}</span></p>
           )}

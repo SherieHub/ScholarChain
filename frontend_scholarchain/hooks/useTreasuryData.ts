@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { getTotalPledgedADA } from "@/lib/firebase/sponsors";
 
 interface TreasuryData {
@@ -10,10 +10,19 @@ interface TreasuryData {
   isAccountable: boolean;
   loading: boolean;
   error: string | null;
+  refetch: () => void;
+}
+
+async function safeFetch(url: string): Promise<Response> {
+  const res = await fetch(url);
+  if (res.status === 429) throw new Error("Rate limited — please wait a moment and refresh.");
+  if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+  return res;
 }
 
 export function useTreasuryData(): TreasuryData {
-  const [data, setData] = useState<TreasuryData>({
+  const [tick, setTick] = useState(0);
+  const [data, setData] = useState<Omit<TreasuryData, "refetch">>({
     totalPledgedADA: 0,
     liveBalanceADA: 0,
     totalPaidOutADA: 0,
@@ -23,26 +32,29 @@ export function useTreasuryData(): TreasuryData {
     error: null,
   });
 
+  const refetch = useCallback(() => setTick(t => t + 1), []);
+
   useEffect(() => {
+    setData(prev => ({ ...prev, loading: true, error: null }));
+
     const load = async () => {
       try {
         const [pledged, treasuryRes, txRes] = await Promise.all([
           getTotalPledgedADA(),
-          fetch("/api/treasury").then(r => r.json()),
-          fetch("/api/transactions").then(r => r.json()),
+          safeFetch("/api/treasury").then(r => r.json()),
+          safeFetch("/api/transactions").then(r => r.json()),
         ]);
 
         const liveBalanceADA: number = treasuryRes.adaBalance ?? 0;
         const totalPaidOutADA: number = txRes.totalPaidOutADA ?? 0;
         const discrepancyADA = Math.max(0, pledged - (liveBalanceADA + totalPaidOutADA));
-        const isAccountable = discrepancyADA <= 0;
 
         setData({
           totalPledgedADA: pledged,
           liveBalanceADA,
           totalPaidOutADA,
           discrepancyADA,
-          isAccountable,
+          isAccountable: discrepancyADA <= 0,
           loading: false,
           error: null,
         });
@@ -56,7 +68,7 @@ export function useTreasuryData(): TreasuryData {
     };
 
     load();
-  }, []);
+  }, [tick]);
 
-  return data;
+  return { ...data, refetch };
 }
