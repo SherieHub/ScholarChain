@@ -60,11 +60,8 @@ export async function POST(req: NextRequest) {
   let txBuffer: ArrayBuffer;
   try {
     txBuffer = assembleSignedTx(unsignedTxHex, witnessSetHex);
-    const view = new Uint8Array(txBuffer);
-    console.log(`[/api/tx/submit] assembled tx first byte: 0x${view[0].toString(16).padStart(2, "0")}, size: ${txBuffer.byteLength} bytes`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error("[/api/tx/submit] assembly failed:", msg);
     return NextResponse.json({ error: `Failed to assemble transaction: ${msg}` }, { status: 400 });
   }
 
@@ -80,7 +77,6 @@ export async function POST(req: NextRequest) {
   }
 
   const errorBody = await res.text().catch(() => res.statusText);
-  console.error(`[/api/tx/submit] Blockfrost HTTP ${res.status}:`, errorBody);
   return NextResponse.json(
     { error: `Cardano node rejected the transaction (HTTP ${res.status}): ${errorBody}` },
     { status: res.status }

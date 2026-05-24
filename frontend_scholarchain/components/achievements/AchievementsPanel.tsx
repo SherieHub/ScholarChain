@@ -5,7 +5,6 @@ import {
   addScholarAchievement,
   getAchievementsByScholarId,
 } from "@/lib/firebase/scholarAchievements";
-import { uploadAchievementProof } from "@/lib/firebase/storage";
 import ScholarAchievementCard from "./ScholarAchievementCard";
 import ScholarAchievementForm from "./ScholarAchievementForm";
 import type { ScholarAchievement, AchievementType } from "@/types/scholarAchievement";
@@ -35,25 +34,16 @@ export default function AchievementsPanel({ scholarId }: AchievementsPanelProps)
     achievementType: AchievementType;
     issuingOrganization: string;
     dateAchieved: string;
-    proofFile: File;
+    proofLink: string;
   }) {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const proofLink = await uploadAchievementProof(scholarId, data.proofFile);
-      const { proofFile, ...rest } = data;
-      const id = await addScholarAchievement({
-        ...rest,
-        scholarId,
-        proofLink,
-        proofFileName: proofFile.name,
-      });
+      const id = await addScholarAchievement({ ...data, scholarId });
       const newEntry: ScholarAchievement = {
         id,
         scholarId,
-        ...rest,
-        proofLink,
-        proofFileName: proofFile.name,
+        ...data,
         status: "Pending Review",
         submittedAt: new Date().toISOString(),
       };
@@ -62,7 +52,7 @@ export default function AchievementsPanel({ scholarId }: AchievementsPanelProps)
       setSuccessMessage(`"${data.achievementName}" submitted for review.`);
       setTimeout(() => setSuccessMessage(null), 5000);
     } catch {
-      setSubmitError("Upload failed. Please check your connection and try again.");
+      setSubmitError("Submission failed. Please check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }

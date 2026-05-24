@@ -24,4 +24,6 @@ export interface ScholarAchievement {
   submittedAt: string; // ISO timestamp
   reviewedAt?: string;
   adminNote?: string;
+  rewardTxHash?: string;
+  tokensRewarded?: number;
 }

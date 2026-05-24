@@ -6,7 +6,6 @@ import ScholarDashboard from "@/components/dashboard/ScholarDashboard";
 import AccessDenied from "@/components/wallet/AccessDenied";
 import NFTScanningState from "@/components/wallet/NFTScanningState";
 import WalletGate from "@/components/wallet/WalletGate";
-import { submitAchievement, getScholarByWalletAddress } from "@/lib/firebase/scholars";
 import { getCurrentScholarship } from "@/lib/firebase/scholarships";
 import { getUniversityConfig } from "@/lib/firebase/config-store";
 import { getWalletAddressBech32 } from "@/lib/utils/addressUtils";
@@ -70,14 +69,9 @@ function PortalSteps({ active }: { active: Step }) {
 function PortalContent() {
   const { connected, wallet, disconnect } = useWallet();
   const lovelace = useLovelace();
-  const { portalState, scholar: hookScholar, error, reset, retry } = useNFTVerification();
-  // localScholar overrides hookScholar after achievement submission so the
-  // dashboard reflects the updated Firestore data without a full re-verification.
-  const [localScholar, setLocalScholar] = useState<Scholar | null>(null);
-  const scholar = localScholar ?? hookScholar;
+  const { portalState, scholar, error, reset, retry } = useNFTVerification();
   const [walletAddress, setWalletAddress] = useState<string>("");
   const [badgeImageUri, setBadgeImageUri] = useState<string | undefined>(undefined);
-  const [isSubmittingAchievement, setIsSubmittingAchievement] = useState(false);
   const [scholarship, setScholarship] = useState<Scholarship | null | undefined>(undefined);
   const [scholarshipLoading, setScholarshipLoading] = useState(false);
 
@@ -112,21 +106,6 @@ function PortalContent() {
     disconnect();
     reset();
     setBadgeImageUri(undefined);
-  };
-
-  const handleSubmitAchievement = async (data: { proofLink: string }) => {
-    if (!scholar?.id) return;
-    setIsSubmittingAchievement(true);
-    try {
-      await submitAchievement(scholar.id, { subject: "", grade: "", proofLink: data.proofLink });
-      // Refresh scholar so dashboard immediately shows "Under Review" status
-      if (walletAddress) {
-        const updated = await getScholarByWalletAddress(walletAddress);
-        if (updated) setLocalScholar(updated);
-      }
-    } finally {
-      setIsSubmittingAchievement(false);
-    }
   };
 
   // ── Step 2: waiting for wallet signature ──────────────────────────────────
@@ -255,8 +234,6 @@ function PortalContent() {
           walletBalance={adaBalance}
           badgeImageUri={badgeImageUri}
           onDisconnect={handleDisconnect}
-          onSubmitAchievement={handleSubmitAchievement}
-          isSubmittingAchievement={isSubmittingAchievement}
         />
 
         {/* Semester scholarship status */}

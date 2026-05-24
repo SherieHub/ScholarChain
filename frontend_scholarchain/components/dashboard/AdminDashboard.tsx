@@ -1,21 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useScholarData } from "@/hooks/useScholarData";
 import ScholarTable, { SkeletonRow } from "@/components/dashboard/ScholarTable";
-import PendingRewardsTable from "@/components/dashboard/PendingRewardsTable";
 import ScholarAchievementsReviewTable from "@/components/dashboard/ScholarAchievementsReviewTable";
 import SponsorTable from "@/components/dashboard/SponsorTable";
 import TreasuryMintPanel from "@/components/dashboard/TreasuryMintPanel";
-import SendScholarshipForm from "@/components/forms/SendScholarshipForm";
-import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import SuccessMessage from "@/components/ui/SuccessMessage";
-import ErrorMessage from "@/components/ui/ErrorMessage";
 import BackButton from "@/components/ui/BackButton";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { sendADA } from "@/lib/mesh/sendAda";
-import { updateScholarPolicyId, getPendingRewardScholars, markRewardAsPaid } from "@/lib/firebase/scholars";
-import { getAllPendingAchievements, updateAchievementStatus } from "@/lib/firebase/scholarAchievements";
+import { updateScholarPolicyId } from "@/lib/firebase/scholars";
+import { getAllPendingAchievements, updateAchievementStatus, markAchievementRewarded } from "@/lib/firebase/scholarAchievements";
+
 import { getScholarshipsByCurrentSemester, approveScholarship, markScholarshipPaid, expireStaleScholarships } from "@/lib/firebase/scholarships";
 import { getAllSponsors } from "@/lib/firebase/sponsors";
 import { parseTxError } from "@/lib/mesh/errorHandler";
@@ -31,8 +27,7 @@ import { getCurrentSemester } from "@/lib/utils/semesterUtils";
 
 const SCHOLARSHIP_AMOUNT_ADA = "5";
 
-type TxState = "idle" | "processing" | "success" | "error";
-type ActiveTab = "table" | "manual" | "rewards" | "sponsors" | "treasury";
+type ActiveTab = "table" | "rewards" | "sponsors" | "treasury";
 
 export default function AdminDashboard() {
   const { wallet, address, connected, disconnect } = useWalletConnection();
@@ -65,27 +60,20 @@ export default function AdminDashboard() {
 
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [mintingId, setMintingId] = useState<string | null>(null);
-  const [rewardProcessingId, setRewardProcessingId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [mintSuccesses, setMintSuccesses] = useState<Record<string, string>>({});
-  // scholarId → txHash for completed sends / rewards
   const [sendSuccesses, setSendSuccesses] = useState<Record<string, string>>({});
-  const [rewardSuccesses, setRewardSuccesses] = useState<Record<string, { txHash: string; tokens: number }>>({});
   const [activeTab, setActiveTab] = useState<ActiveTab>("table");
-  const [pendingRewards, setPendingRewards] = useState<Scholar[]>([]);
   const [rewardsLoading, setRewardsLoading] = useState(false);
   const [pendingAchievements, setPendingAchievements] = useState<ScholarAchievement[]>([]);
   const [achievementProcessingId, setAchievementProcessingId] = useState<string | null>(null);
+  const [achievementRewardSuccesses, setAchievementRewardSuccesses] = useState<Record<string, { txHash: string; tokens: number }>>({});
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [sponsorsLoading, setSponsorsLoading] = useState(false);
   // scholarId → current-semester scholarship record
   const [scholarshipMap, setScholarshipMap] = useState<Map<string, Scholarship>>(new Map());
 
-  const [txState, setTxState] = useState<TxState>("idle");
-  const [txHash, setTxHash] = useState<string>("");
-  const [errorMsg, setErrorMsg] = useState<string>("");
-
-  const loadScholarships = async () => {
+  const loadScholarships = useCallback(async () => {
     try {
       await expireStaleScholarships();
       const list = await getScholarshipsByCurrentSemester();
@@ -93,9 +81,9 @@ export default function AdminDashboard() {
     } catch {
       setScholarshipMap(new Map());
     }
-  };
+  }, []);
 
-  const loadSponsors = async () => {
+  const loadSponsors = useCallback(async () => {
     setSponsorsLoading(true);
     try {
       const data = await getAllSponsors();
@@ -105,30 +93,36 @@ export default function AdminDashboard() {
     } finally {
       setSponsorsLoading(false);
     }
-  };
+  }, []);
 
-  const loadPendingRewards = async () => {
+  const loadPendingRewards = useCallback(async () => {
     setRewardsLoading(true);
     try {
-      const [scholars, achievements] = await Promise.all([
-        getPendingRewardScholars(),
-        getAllPendingAchievements(),
-      ]);
-      setPendingRewards(scholars);
+      const achievements = await getAllPendingAchievements();
       setPendingAchievements(achievements);
-    } catch {
-      setPendingRewards([]);
-      setPendingAchievements([]);
+    } catch (err: unknown) {
+      setRowErrors((prev) => ({ ...prev, ach_load: String(err) }));
     } finally {
       setRewardsLoading(false);
     }
-  };
+  }, []);
 
-  const handleApproveAchievement = async (achievement: ScholarAchievement) => {
-    if (!achievement.id) return;
+  const handleApproveAchievement = async (achievement: ScholarAchievement, tokenAmount: number) => {
+    if (!wallet || !achievement.id) return;
+    const scholar = scholars.find((s) => s.id === achievement.scholarId);
+    if (!scholar) {
+      setRowErrors((prev) => ({ ...prev, [`ach_${achievement.id}`]: "Scholar not found." }));
+      return;
+    }
     setAchievementProcessingId(achievement.id);
+    setRowErrors((prev) => { const next = { ...prev }; delete next[`ach_${achievement.id}`]; return next; });
     try {
-      await updateAchievementStatus(achievement.id, "Approved");
+      const { txHash } = await sendTokenReward(wallet, scholar.walletAddress, tokenAmount);
+      await markAchievementRewarded(achievement.id, txHash, tokenAmount);
+      setAchievementRewardSuccesses((prev) => ({
+        ...prev,
+        [achievement.id!]: { txHash, tokens: tokenAmount },
+      }));
       setPendingAchievements((prev) => prev.filter((a) => a.id !== achievement.id));
     } catch (err: unknown) {
       setRowErrors((prev) => ({ ...prev, [`ach_${achievement.id}`]: parseTxError(err) }));
@@ -153,8 +147,7 @@ export default function AdminDashboard() {
   // Reload scholarships whenever the scholars list refreshes
   useEffect(() => {
     if (connected) loadScholarships();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [connected, scholars]);
+  }, [connected, loadScholarships]);
 
   const handleApproveScholarship = async (scholarship: Scholarship) => {
     if (!scholarship.id) return;
@@ -211,7 +204,7 @@ export default function AdminDashboard() {
         if (scholarship?.id && scholarship.status === "Pending") {
           await approveScholarship(scholarship.id);
         }
-      } catch (dbErr) { console.error(dbErr); }
+      } catch { /* Firestore metadata update failed — mint already confirmed on-chain */ }
       setMintSuccesses(prev => ({ ...prev, [scholar.id!]: mintTxHash }));
       await loadScholarships();
       refresh();
@@ -222,41 +215,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleApproveReward = async (scholar: Scholar, tokenAmount: number) => {
-    if (!wallet || !scholar.id) return;
-    setRewardProcessingId(scholar.id);
-    setRowErrors(prev => { const next = { ...prev }; delete next[`reward_${scholar.id}`]; return next; });
-    try {
-      const { txHash: rewardTxHash } = await sendTokenReward(wallet, scholar.walletAddress, tokenAmount);
-      await markRewardAsPaid(scholar.id, rewardTxHash, tokenAmount);
-      setRewardSuccesses(prev => ({ ...prev, [scholar.id!]: { txHash: rewardTxHash, tokens: tokenAmount } }));
-      await loadPendingRewards();
-    } catch (err: unknown) {
-      setRowErrors(prev => ({ ...prev, [`reward_${scholar.id}`]: parseTxError(err) }));
-    } finally {
-      setRewardProcessingId(null);
-    }
-  };
-
-  const handleManualSend = async (address: string, amount: number) => {
-    if (!wallet) return;
-    setTxState("processing");
-    setErrorMsg("");
-    try {
-      const hash = await sendADA(wallet, address, amount.toString());
-      setTxHash(hash);
-      setTxState("success");
-    } catch (err: unknown) {
-      setErrorMsg(parseTxError(err));
-      setTxState("error");
-    }
-  };
-
-  const resetManual = () => { setErrorMsg(""); setTxState("idle"); };
-
   const tabs: { id: ActiveTab; label: string }[] = [
     { id: "table", label: "Scholar Table" },
-    { id: "manual", label: "Manual Send" },
     { id: "rewards", label: "Rewards" },
     { id: "sponsors", label: "Sponsors" },
     { id: "treasury", label: "Treasury" },
@@ -390,7 +350,7 @@ export default function AdminDashboard() {
 
             {/* Transaction error banners */}
             {Object.entries(rowErrors)
-              .filter(([id]) => !id.startsWith("reward_"))
+              .filter(([id]) => !id.startsWith("reward_") && !id.startsWith("ach_"))
               .map(([id, msg]) => (
                 <div key={id} className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
                   Transaction error: {msg}
@@ -399,60 +359,35 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === "manual" && (
-          <div className="max-w-lg">
-            {txState === "idle" && <SendScholarshipForm onSubmit={handleManualSend} isLoading={false} isConnected={true} />}
-            {txState === "processing" && <LoadingSpinner />}
-            {txState === "success" && <SuccessMessage txHash={txHash} onReset={resetManual} />}
-            {txState === "error" && <ErrorMessage error={errorMsg} onDismiss={resetManual} />}
-          </div>
-        )}
-
         {activeTab === "rewards" && (
           <div className="flex flex-col gap-4">
             {rewardsLoading ? (
               <p className="text-sm text-slate-500">Loading...</p>
             ) : (
-              <>
-                {/* New achievements from the Achievements module */}
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Achievement Submissions</h3>
-                  <ScholarAchievementsReviewTable
-                    achievements={pendingAchievements}
-                    scholars={scholars}
-                    onApprove={handleApproveAchievement}
-                    onReject={handleRejectAchievement}
-                    processingId={achievementProcessingId}
-                  />
-                </div>
-
-                {/* Legacy proof-of-achievement reward flow */}
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Token Reward Queue</h3>
-                  <PendingRewardsTable
-                    scholars={pendingRewards}
-                    onApproveReward={handleApproveReward}
-                    processingId={rewardProcessingId}
-                  />
-                </div>
-              </>
+              <ScholarAchievementsReviewTable
+                achievements={pendingAchievements}
+                scholars={scholars}
+                onApprove={handleApproveAchievement}
+                onReject={handleRejectAchievement}
+                processingId={achievementProcessingId}
+              />
             )}
 
-            {/* Token reward success banners */}
-            {Object.entries(rewardSuccesses).map(([scholarId, { txHash: rHash, tokens }]) => (
-              <div key={`reward_ok_${scholarId}`} className="flex items-center justify-between bg-violet-500/10 border border-violet-500/20 rounded-xl px-4 py-3">
+            {/* Achievement reward success banners */}
+            {Object.entries(achievementRewardSuccesses).map(([achId, { txHash: aHash, tokens }]) => (
+              <div key={`ach_ok_${achId}`} className="flex items-center justify-between bg-violet-500/10 border border-violet-500/20 rounded-xl px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span className="text-violet-400 text-base">✓</span>
                   <span className="text-violet-300 text-sm font-semibold">{tokens.toLocaleString()} SCHOLAR Tokens Sent</span>
-                  <span className="text-violet-500 text-xs">Transaction confirmed on-chain</span>
+                  <span className="text-violet-500 text-xs">Achievement reward confirmed on-chain</span>
                 </div>
-                <TxHashLink txHash={rHash} label="View Transaction" />
+                <TxHashLink txHash={aHash} label="View Transaction" />
               </div>
             ))}
 
             {/* Reward error banners */}
             {Object.entries(rowErrors)
-              .filter(([id]) => id.startsWith("reward_"))
+              .filter(([id]) => id.startsWith("ach_"))
               .map(([id, msg]) => (
                 <div key={id} className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
                   {msg}

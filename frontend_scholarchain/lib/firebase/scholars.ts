@@ -1,6 +1,6 @@
 import {
   collection, addDoc, getDocs, updateDoc, doc,
-  query, where, serverTimestamp, Timestamp
+  query, where, serverTimestamp
 } from "firebase/firestore";
 import { db } from "./config";
 import type { Scholar, ScholarStatus } from "@/types";
@@ -66,84 +66,25 @@ export async function getScholarByWalletAddress(walletAddress: string): Promise<
   return { id: d.id, ...d.data() } as Scholar;
 }
 
-/** Submit a scholar's achievement (sets rewardStatus to Pending Review) */
-export async function submitAchievement(
-  scholarId: string,
-  achievement: { subject: string; grade: string; proofLink: string }
-): Promise<void> {
-  const ref = doc(db, SCHOLARS_COLLECTION, scholarId);
-  await updateDoc(ref, {
-    achievement: {
-      ...achievement,
-      rewardStatus: "Pending Review",
-      submittedAt: serverTimestamp(),
-    },
-    updatedAt: serverTimestamp(),
-  });
-}
-
-/** Fetch all scholars with a pending reward review */
-export async function getPendingRewardScholars(): Promise<Scholar[]> {
-  const q = query(
-    collection(db, SCHOLARS_COLLECTION),
-    where("achievement.rewardStatus", "==", "Pending Review")
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Scholar));
-}
-
-/** Mark a scholar's achievement as paid after a confirmed token reward tx */
-export async function markRewardAsPaid(
-  scholarId: string,
-  txHash: string,
-  tokensRewarded: number
-): Promise<void> {
-  const ref = doc(db, SCHOLARS_COLLECTION, scholarId);
-  await updateDoc(ref, {
-    "achievement.rewardStatus": "Paid",
-    "achievement.rewardTxHash": txHash,
-    "achievement.tokensRewarded": tokensRewarded,
-    "achievement.paidAt": serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  });
-}
-
-/** Fetch scholars by a list of wallet addresses (batch lookup, max 30) */
+/** Fetch scholars by a list of wallet addresses (parallel batch lookup, max 30 per chunk) */
 export async function getScholarsByWalletAddresses(addresses: string[]): Promise<Scholar[]> {
   if (addresses.length === 0) return [];
   const chunks: string[][] = [];
   for (let i = 0; i < addresses.length; i += 30) {
     chunks.push(addresses.slice(i, i + 30));
   }
-  const results: Scholar[] = [];
-  for (const chunk of chunks) {
-    const q = query(
-      collection(db, SCHOLARS_COLLECTION),
-      where("walletAddress", "in", chunk)
-    );
-    const snapshot = await getDocs(q);
-    snapshot.docs.forEach(d => results.push({ id: d.id, ...d.data() } as Scholar));
-  }
-  return results;
+  const snapshots = await Promise.all(
+    chunks.map(chunk =>
+      getDocs(query(collection(db, SCHOLARS_COLLECTION), where("walletAddress", "in", chunk)))
+    )
+  );
+  return snapshots.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Scholar)));
 }
 
 /** Fetch all scholars regardless of status (used in Admin Dashboard table) */
 export async function getAllScholars(): Promise<Scholar[]> {
   const snapshot = await getDocs(collection(db, SCHOLARS_COLLECTION));
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Scholar));
-}
-
-/** Sum of all SCHOLAR tokens distributed via achievement rewards. */
-export async function getTotalTokensDistributed(): Promise<number> {
-  const q = query(
-    collection(db, SCHOLARS_COLLECTION),
-    where("achievement.rewardStatus", "==", "Paid")
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.reduce((sum, d) => {
-    const tokens = d.data()?.achievement?.tokensRewarded ?? 0;
-    return sum + Number(tokens);
-  }, 0);
 }
 
 /** Update a scholar's policyId and scholarTokenId after NFT mint, marks status Approved */

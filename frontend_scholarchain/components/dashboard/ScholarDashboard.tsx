@@ -1,8 +1,6 @@
 import type { Scholar } from "@/types";
 import { shortenAddress } from "@/lib/utils/addressUtils";
 import TxHashLink from "@/components/transparency/TxHashLink";
-import AchievementSubmitForm from "@/components/forms/AchievementSubmitForm";
-import AchievementStatusCard from "@/components/ui/AchievementStatusCard";
 
 function ipfsToGateway(uri: string): string {
   if (uri.startsWith("ipfs://")) return `https://ipfs.io/ipfs/${uri.slice(7)}`;
@@ -14,8 +12,6 @@ interface ScholarDashboardProps {
   walletBalance: string;
   badgeImageUri?: string;
   onDisconnect: () => void;
-  onSubmitAchievement?: (data: { proofLink: string }) => Promise<void>;
-  isSubmittingAchievement?: boolean;
 }
 
 export default function ScholarDashboard({
@@ -23,8 +19,6 @@ export default function ScholarDashboard({
   walletBalance,
   badgeImageUri,
   onDisconnect,
-  onSubmitAchievement,
-  isSubmittingAchievement = false,
 }: ScholarDashboardProps) {
   const badgeGatewayUrl = badgeImageUri ? ipfsToGateway(badgeImageUri) : null;
   return (
@@ -117,19 +111,6 @@ export default function ScholarDashboard({
         </div>
       )}
 
-      {/* Achievement Section */}
-      {scholar.achievement ? (
-        <AchievementStatusCard achievement={scholar.achievement} />
-      ) : null}
-
-      {onSubmitAchievement && scholar.id && (
-        <AchievementSubmitForm
-          scholarId={scholar.id}
-          onSubmit={onSubmitAchievement}
-          isSubmitting={isSubmittingAchievement}
-          currentAchievement={scholar.achievement}
-        />
-      )}
     </div>
   );
 }

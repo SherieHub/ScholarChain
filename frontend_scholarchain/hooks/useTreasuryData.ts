@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { getTotalPledgedADA } from "@/lib/firebase/sponsors";
-import { getTotalTokensDistributed } from "@/lib/firebase/scholars";
+import { getTotalTokensDistributed } from "@/lib/firebase/scholarAchievements";
 
 interface TreasuryData {
   totalPledgedADA: number;

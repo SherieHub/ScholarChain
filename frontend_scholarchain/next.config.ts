@@ -3,6 +3,11 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, ".."),
+  experimental: {
+    // Tree-shake lucide-react icons and firebase sub-packages at build time.
+    // Without this, the full icon set (~2 MB) and all firebase modules are bundled.
+    optimizePackageImports: ["lucide-react", "firebase/app", "firebase/firestore", "firebase/auth"],
+  },
   serverExternalPackages: [
     "@meshsdk/core",
     "@meshsdk/react",

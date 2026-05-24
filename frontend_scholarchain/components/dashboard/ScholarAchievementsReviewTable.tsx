@@ -6,7 +6,7 @@ import type { Scholar } from "@/types";
 interface ScholarAchievementsReviewTableProps {
   achievements: ScholarAchievement[];
   scholars: Scholar[];
-  onApprove: (achievement: ScholarAchievement) => Promise<void>;
+  onApprove: (achievement: ScholarAchievement, tokenAmount: number) => Promise<void>;
   onReject: (achievement: ScholarAchievement, note: string) => Promise<void>;
   processingId: string | null;
 }
@@ -28,6 +28,7 @@ export default function ScholarAchievementsReviewTable({
   onReject,
   processingId,
 }: ScholarAchievementsReviewTableProps) {
+  const [tokenAmounts, setTokenAmounts] = useState<Record<string, string>>({});
   const [rejectNotes, setRejectNotes] = useState<Record<string, string>>({});
   const [showRejectInput, setShowRejectInput] = useState<Record<string, boolean>>({});
 
@@ -52,7 +53,7 @@ export default function ScholarAchievementsReviewTable({
             <th className="px-4 py-3">Organization</th>
             <th className="px-4 py-3">Date</th>
             <th className="px-4 py-3">Proof</th>
-            <th className="px-4 py-3">Action</th>
+            <th className="px-4 py-3">Send Reward</th>
           </tr>
         </thead>
         <tbody>
@@ -60,36 +61,48 @@ export default function ScholarAchievementsReviewTable({
             const scholar = scholarMap.get(ach.scholarId);
             const isProcessing = processingId === ach.id;
             const showReject = showRejectInput[ach.id!] ?? false;
+            const tokenVal = tokenAmounts[ach.id!] ?? "";
+            const tokenNum = Number(tokenVal);
+            const isValidToken = tokenNum > 0 && Number.isInteger(tokenNum);
 
             return (
               <tr
                 key={ach.id}
                 className="border-b border-white/[0.06] hover:bg-white/[0.02] transition-colors align-top"
               >
+                {/* Scholar */}
                 <td className="px-4 py-3 font-medium text-white whitespace-nowrap">
-                  {scholar?.name ?? (
+                  <p>{scholar?.name ?? (
                     <span className="text-slate-500 font-mono text-xs">{ach.scholarId.slice(0, 8)}…</span>
+                  )}</p>
+                  {scholar?.course && (
+                    <p className="text-xs text-slate-500 mt-0.5">{scholar.course}</p>
                   )}
                 </td>
 
-                <td className="px-4 py-3 text-white max-w-[180px]">
-                  <p className="font-medium text-sm leading-snug">{ach.achievementName}</p>
+                {/* Achievement */}
+                <td className="px-4 py-3 max-w-[180px]">
+                  <p className="font-medium text-sm text-white leading-snug">{ach.achievementName}</p>
                 </td>
 
+                {/* Type */}
                 <td className="px-4 py-3 whitespace-nowrap">
                   <span className="text-xs font-medium text-indigo-300 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-2.5 py-0.5">
                     {ach.achievementType}
                   </span>
                 </td>
 
+                {/* Org */}
                 <td className="px-4 py-3 text-slate-400 text-xs max-w-[140px]">
                   {ach.issuingOrganization}
                 </td>
 
+                {/* Date */}
                 <td className="px-4 py-3 text-slate-400 text-xs whitespace-nowrap">
                   {formatDate(ach.dateAchieved)}
                 </td>
 
+                {/* Proof */}
                 <td className="px-4 py-3">
                   {ach.proofLink ? (
                     <a
@@ -106,53 +119,79 @@ export default function ScholarAchievementsReviewTable({
                   )}
                 </td>
 
-                <td className="px-4 py-3">
+                {/* Send Reward / Reject */}
+                <td className="px-4 py-4">
                   {showReject ? (
-                    <div className="flex flex-col gap-1.5 min-w-[180px]">
+                    <div className="flex flex-col gap-2 min-w-[200px]">
                       <input
                         type="text"
-                        placeholder="Reason (optional)"
+                        placeholder="Rejection reason (optional)"
                         value={rejectNotes[ach.id!] ?? ""}
                         onChange={(e) =>
                           setRejectNotes((p) => ({ ...p, [ach.id!]: e.target.value }))
                         }
-                        className="bg-white/[0.04] border border-white/[0.10] rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-600 outline-none focus:border-red-500/50"
+                        className="w-full bg-red-500/5 border border-red-500/30 rounded-lg px-3 py-2 text-xs text-white placeholder-red-900/60 outline-none focus:border-red-500/60 focus:ring-1 focus:ring-red-500/20 transition-all"
                         disabled={isProcessing}
                       />
-                      <div className="flex gap-1.5">
-                        <button
-                          onClick={() => onReject(ach, rejectNotes[ach.id!] ?? "")}
-                          disabled={isProcessing}
-                          className="flex-1 inline-flex items-center justify-center text-xs font-medium text-red-300 bg-red-500/10 border border-red-500/25 hover:bg-red-500/20 rounded-lg px-2.5 py-1.5 transition-all disabled:opacity-50"
-                        >
-                          {isProcessing ? "…" : "Confirm Reject"}
-                        </button>
-                        <button
-                          onClick={() => setShowRejectInput((p) => ({ ...p, [ach.id!]: false }))}
-                          disabled={isProcessing}
-                          className="text-xs text-slate-400 hover:text-white border border-white/[0.10] hover:border-white/[0.20] bg-white/[0.03] rounded-lg px-2.5 py-1.5 transition-all disabled:opacity-50"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex gap-1.5">
                       <button
-                        onClick={() => onApprove(ach)}
+                        onClick={() => onReject(ach, rejectNotes[ach.id!] ?? "")}
                         disabled={isProcessing}
-                        className="inline-flex items-center justify-center text-xs font-semibold text-green-300 bg-green-500/10 border border-green-500/25 hover:bg-green-500/20 hover:text-green-200 rounded-lg px-3 py-1.5 transition-all disabled:opacity-50"
+                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-600 hover:bg-red-500 active:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg shadow-lg shadow-red-900/40 transition-all"
                       >
                         {isProcessing ? (
-                          <span className="h-3 w-3 border-2 border-green-500/30 border-t-green-300 rounded-full animate-spin" />
-                        ) : "Approve"}
+                          <>
+                            <span className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Rejecting…
+                          </>
+                        ) : (
+                          "Confirm Reject"
+                        )}
+                      </button>
+                      <button
+                        onClick={() => setShowRejectInput((p) => ({ ...p, [ach.id!]: false }))}
+                        disabled={isProcessing}
+                        className="w-full inline-flex items-center justify-center px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.12] hover:border-white/[0.22] rounded-lg transition-all disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2 min-w-[200px]">
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        value={tokenVal}
+                        onChange={(e) =>
+                          setTokenAmounts((p) => ({ ...p, [ach.id!]: e.target.value }))
+                        }
+                        placeholder="SCHL token amount"
+                        disabled={isProcessing}
+                        className="w-full bg-violet-500/5 border border-violet-500/25 hover:border-violet-500/40 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-violet-500/70 focus:ring-1 focus:ring-violet-500/25 transition-all disabled:opacity-50"
+                      />
+                      <button
+                        onClick={() => onApprove(ach, tokenNum)}
+                        disabled={!isValidToken || isProcessing}
+                        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 active:from-violet-700 active:to-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg shadow-lg shadow-violet-900/50 transition-all"
+                      >
+                        {isProcessing ? (
+                          <>
+                            <span className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            Sending…
+                          </>
+                        ) : (
+                          <>
+                            <span>Send Tokens</span>
+                            <span className="text-violet-300">✦</span>
+                          </>
+                        )}
                       </button>
                       <button
                         onClick={() => setShowRejectInput((p) => ({ ...p, [ach.id!]: true }))}
                         disabled={isProcessing}
-                        className="inline-flex items-center justify-center text-xs font-medium text-red-400 bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 hover:border-red-400/30 rounded-lg px-3 py-1.5 transition-all disabled:opacity-50"
+                        className="w-full inline-flex items-center justify-center px-3 py-2 text-xs font-bold text-red-300 bg-red-500/[0.08] hover:bg-red-500/[0.18] border border-red-500/30 hover:border-red-400/60 rounded-lg shadow-sm shadow-red-900/20 transition-all disabled:opacity-50"
                       >
-                        Reject
+                        Reject Submission
                       </button>
                     </div>
                   )}

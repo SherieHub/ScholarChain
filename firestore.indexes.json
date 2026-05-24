@@ -1,6 +1,22 @@
 {
   "indexes": [
     {
+      "collectionGroup": "scholarAchievements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",      "order": "ASCENDING" },
+        { "fieldPath": "submittedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "scholarAchievements",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scholarId",   "order": "ASCENDING" },
+        { "fieldPath": "submittedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "scholarships",
       "queryScope": "COLLECTION",
       "fields": [

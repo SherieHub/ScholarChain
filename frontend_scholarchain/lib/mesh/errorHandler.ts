@@ -6,10 +6,6 @@
  * @returns A friendly string safe to display directly to the Admin
  */
 export function parseTxError(error: unknown): string {
-  // Always log the raw error so developers can inspect the exact rejection
-  // reason in the browser console, even when the UI message is generic.
-  console.error("[parseTxError] raw error:", error);
-
   // CIP-30 wallets (Eternl, Nami, etc.) throw plain objects like { code, info }
   // rather than Error instances. Extract the info field when present.
   let msg: string;

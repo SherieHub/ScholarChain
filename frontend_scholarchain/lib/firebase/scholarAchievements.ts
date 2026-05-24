@@ -5,7 +5,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   doc,
   updateDoc,
   serverTimestamp,
@@ -31,11 +30,10 @@ export async function getAchievementsByScholarId(
 ): Promise<ScholarAchievement[]> {
   const q = query(
     collection(db, COL),
-    where("scholarId", "==", scholarId),
-    orderBy("submittedAt", "desc")
+    where("scholarId", "==", scholarId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => {
+  const docs = snap.docs.map((d) => {
     const raw = d.data();
     return {
       ...raw,
@@ -46,16 +44,16 @@ export async function getAchievementsByScholarId(
           : String(raw.submittedAt ?? ""),
     } as ScholarAchievement;
   });
+  return docs.sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
 }
 
 export async function getAllPendingAchievements(): Promise<ScholarAchievement[]> {
   const q = query(
     collection(db, COL),
-    where("status", "==", "Pending Review"),
-    orderBy("submittedAt", "asc")
+    where("status", "==", "Pending Review")
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => {
+  const docs = snap.docs.map((d) => {
     const raw = d.data();
     return {
       ...raw,
@@ -66,6 +64,7 @@ export async function getAllPendingAchievements(): Promise<ScholarAchievement[]>
           : String(raw.submittedAt ?? ""),
     } as ScholarAchievement;
   });
+  return docs.sort((a, b) => a.submittedAt.localeCompare(b.submittedAt));
 }
 
 export async function updateAchievementStatus(
@@ -76,6 +75,25 @@ export async function updateAchievementStatus(
   await updateDoc(doc(db, COL, id), {
     status,
     adminNote: adminNote ?? "",
+    reviewedAt: serverTimestamp(),
+  });
+}
+
+export async function getTotalTokensDistributed(): Promise<number> {
+  const q = query(collection(db, COL), where("status", "==", "Approved"));
+  const snap = await getDocs(q);
+  return snap.docs.reduce((sum, d) => sum + Number(d.data()?.tokensRewarded ?? 0), 0);
+}
+
+export async function markAchievementRewarded(
+  id: string,
+  txHash: string,
+  tokensRewarded: number
+): Promise<void> {
+  await updateDoc(doc(db, COL, id), {
+    status: "Approved",
+    rewardTxHash: txHash,
+    tokensRewarded,
     reviewedAt: serverTimestamp(),
   });
 }

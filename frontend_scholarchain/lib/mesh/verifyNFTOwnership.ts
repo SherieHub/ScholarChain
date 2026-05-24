@@ -21,22 +21,15 @@ export async function verifyScholarBadge(
   scholar: Scholar | null;
 }> {
   try {
-    console.debug("[verifyScholarBadge] walletAddress:", walletAddress);
-
     const scholar = await getScholarByWalletAddress(walletAddress);
-    console.debug("[verifyScholarBadge] scholar from Firestore:", scholar);
 
-    // No matching scholar record → deny
     if (!scholar) return { isAuthorized: false, matchedAsset: null, scholar: null };
 
-    // Scholar not yet approved or NFT not yet minted → deny
     if (scholar.status !== "Approved" || !scholar.policyId || scholar.policyId.trim() === "") {
-      console.debug("[verifyScholarBadge] denied — status:", scholar.status, "policyId:", scholar.policyId);
       return { isAuthorized: false, matchedAsset: null, scholar: null };
     }
 
     const policyId = scholar.policyId.trim();
-    console.debug("[verifyScholarBadge] checking policyId:", policyId);
 
     // wallet from useWallet() is MeshCardanoBrowserWallet which has no getAssets().
     // getBalanceMesh() returns Asset[] ({ unit, quantity }) — same underlying data.
@@ -45,13 +38,7 @@ export async function verifyScholarBadge(
         ? await wallet.getBalanceMesh()
         : await wallet.getAssets();
 
-    console.debug("[verifyScholarBadge] wallet balance assets:", balance);
-
-    const match = balance.find(
-      (asset) => asset.unit && asset.unit.startsWith(policyId)
-    );
-
-    console.debug("[verifyScholarBadge] matched asset:", match ?? "none");
+    const match = balance.find((asset) => asset.unit && asset.unit.startsWith(policyId));
 
     if (match) {
       return {
@@ -67,8 +54,7 @@ export async function verifyScholarBadge(
     }
 
     return { isAuthorized: false, matchedAsset: null, scholar: null };
-  } catch (err) {
-    console.error("[verifyScholarBadge] error:", err);
+  } catch {
     return { isAuthorized: false, matchedAsset: null, scholar: null };
   }
 }
