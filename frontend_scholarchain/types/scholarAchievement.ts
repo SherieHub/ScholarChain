@@ -19,6 +19,7 @@ export interface ScholarAchievement {
   issuingOrganization: string;
   dateAchieved: string; // ISO date string YYYY-MM-DD
   proofLink: string;
+  proofFileName?: string;
   status: AchievementStatus;
   submittedAt: string; // ISO timestamp
   reviewedAt?: string;

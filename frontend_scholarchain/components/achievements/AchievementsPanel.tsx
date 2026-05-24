@@ -5,6 +5,7 @@ import {
   addScholarAchievement,
   getAchievementsByScholarId,
 } from "@/lib/firebase/scholarAchievements";
+import { uploadAchievementProof } from "@/lib/firebase/storage";
 import ScholarAchievementCard from "./ScholarAchievementCard";
 import ScholarAchievementForm from "./ScholarAchievementForm";
 import type { ScholarAchievement, AchievementType } from "@/types/scholarAchievement";
@@ -19,6 +20,7 @@ export default function AchievementsPanel({ scholarId }: AchievementsPanelProps)
   const [showForm, setShowForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -33,15 +35,25 @@ export default function AchievementsPanel({ scholarId }: AchievementsPanelProps)
     achievementType: AchievementType;
     issuingOrganization: string;
     dateAchieved: string;
-    proofLink: string;
+    proofFile: File;
   }) {
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
-      const id = await addScholarAchievement({ ...data, scholarId });
+      const proofLink = await uploadAchievementProof(scholarId, data.proofFile);
+      const { proofFile, ...rest } = data;
+      const id = await addScholarAchievement({
+        ...rest,
+        scholarId,
+        proofLink,
+        proofFileName: proofFile.name,
+      });
       const newEntry: ScholarAchievement = {
         id,
         scholarId,
-        ...data,
+        ...rest,
+        proofLink,
+        proofFileName: proofFile.name,
         status: "Pending Review",
         submittedAt: new Date().toISOString(),
       };
@@ -49,6 +61,8 @@ export default function AchievementsPanel({ scholarId }: AchievementsPanelProps)
       setShowForm(false);
       setSuccessMessage(`"${data.achievementName}" submitted for review.`);
       setTimeout(() => setSuccessMessage(null), 5000);
+    } catch {
+      setSubmitError("Upload failed. Please check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -89,13 +103,21 @@ export default function AchievementsPanel({ scholarId }: AchievementsPanelProps)
         </div>
       )}
 
+      {/* Error banner */}
+      {submitError && (
+        <div className="bg-red-900/20 border border-red-700/30 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-red-300">
+          <span className="text-red-400 font-bold text-base">✕</span>
+          {submitError}
+        </div>
+      )}
+
       {/* Add achievement form */}
       {showForm && (
         <div className="bg-white/[0.02] border border-white/[0.08] rounded-xl p-4">
           <p className="text-sm font-semibold text-white mb-4">New Achievement</p>
           <ScholarAchievementForm
             onSubmit={handleSubmit}
-            onCancel={() => setShowForm(false)}
+            onCancel={() => { setShowForm(false); setSubmitError(null); }}
             isSubmitting={isSubmitting}
           />
         </div>
