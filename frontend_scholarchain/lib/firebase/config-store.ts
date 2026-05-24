@@ -5,7 +5,7 @@ export interface UniversityConfig {
   badgeIPFSUri: string;
   nftPolicyId: string;
   tokenPolicyId: string;
-  adminWalletAddress: string;
+  adminWalletAddresses: string[];
   scholarTokenTotalSupply: number;
 }
 

@@ -47,12 +47,9 @@ export default function AdminDashboard() {
     setWalletChecked(false);
     getUniversityConfig()
       .then(config => {
-        if (
-          config.adminWalletAddress &&
-          config.adminWalletAddress.trim() !== "" &&
-          address.trim() !== config.adminWalletAddress.trim()
-        ) {
-          setWrongWallet(config.adminWalletAddress);
+        const admins = config.adminWalletAddresses ?? [];
+        if (admins.length > 0 && !admins.map(a => a.trim()).includes(address.trim())) {
+          setWrongWallet(admins[0]);
         } else {
           setWrongWallet(null);
         }

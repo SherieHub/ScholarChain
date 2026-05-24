@@ -1,50 +1,49 @@
-import { Transaction } from "@meshsdk/core";
-import { getUniversityConfig } from "@/lib/firebase/config-store";
+import { Transaction, ForgeScript } from "@meshsdk/core";
+import type { Mint } from "@meshsdk/core";
+import { adaToLovelace } from "@/lib/utils/lovelaceConversion";
 import { normalizeToB32, getWalletAddressBech32 } from "@/lib/utils/addressUtils";
 import { submitTransaction } from "@/lib/mesh/submitTx";
 import { filterPendingSpent, markUtxosSpent } from "@/lib/mesh/pendingUtxos";
 
-// Cardano native-token unit = policyId + hex(assetName).
-// "SCHOLAR" → 5343484f4c4152
-const SCHOLAR_ASSET_NAME_HEX = "5343484f4c4152";
+const SCHOLAR_ASSET_NAME = "SCHOLAR";
 
-// Cardano requires a minimum ADA amount alongside any native token output.
-// 2 ADA satisfies the minimum UTxO rule on Preprod. This is not a reward —
-// it is a protocol requirement and is not configurable by the admin.
-const MIN_UTxO_LOVELACE = "2000000";
-
-export async function sendTokenReward(
+export async function sendMultiAssetReward(
   wallet: any,
   recipientAddress: string,
   tokenAmount: number
-): Promise<{ txHash: string; tokensSent: number }> {
-  const config = await getUniversityConfig();
-
-  if (!config.tokenPolicyId) {
-    throw new Error("SCHOLAR token has not been minted yet. Mint the token supply first.");
-  }
-
-  // Unit format: policyId + hex(assetName) — required by Cardano ledger and MeshJS
-  const tokenUnit = `${config.tokenPolicyId}${SCHOLAR_ASSET_NAME_HEX}`;
+): Promise<{ txHash: string; adaSent: number; tokensSent: number }> {
+  const lovelace = adaToLovelace(adaAmount);
   const normalizedAddress = normalizeToB32(recipientAddress);
-  const changeAddress = await getWalletAddressBech32(wallet);
+
+  // Use the wallet's change address for the ForgeScript — same pattern as mintNFT.ts.
+  // This ensures the ForgeScript's pubkey hash matches the key the wallet signs with.
+  const changeAddress: string =
+    typeof wallet.getChangeAddressBech32 === "function"
+      ? await wallet.getChangeAddressBech32()
+      : await getWalletAddressBech32(wallet);
+  if (!changeAddress) throw new Error("Could not resolve wallet address.");
+
+  const forgingScript = ForgeScript.withOneSignature(changeAddress);
+
+  // Mint SCHOLAR tokens directly to the scholar — no pre-minted supply needed.
+  // Any admin can do this because minting only requires their own key to sign.
+  const asset: Mint = {
+    assetName: SCHOLAR_ASSET_NAME,
+    assetQuantity: String(tokenAmount),
+    recipient: normalizedAddress,
+  };
 
   const tx = new Transaction({ initiator: wallet });
-  tx.sendAssets({ address: normalizedAddress }, [
-    { unit: "lovelace", quantity: MIN_UTxO_LOVELACE },
-    { unit: tokenUnit, quantity: String(tokenAmount) },
-  ]);
-
-  // MeshJS beta workaround: pre-set change address and UTxOs before build()
-  // to bypass broken Address.fromString. See mintNFT.ts for explanation.
+  tx.mintAsset(forgingScript, asset);
+  tx.sendLovelace({ address: normalizedAddress }, lovelace);
   tx.setChangeAddress(changeAddress);
-  // wallet.getUtxos() (CIP-30 pass-through) returns raw CBOR hex strings.
-  // wallet.getUtxosMesh() deserializes them into { input, output } objects.
+
   let utxos: any[] = [];
   try {
-    const raw: any[] = typeof wallet.getUtxosMesh === "function"
-      ? await wallet.getUtxosMesh()
-      : await wallet.getUtxos() ?? [];
+    const raw: any[] =
+      typeof wallet.getUtxosMesh === "function"
+        ? await wallet.getUtxosMesh()
+        : (await wallet.getUtxos()) ?? [];
     utxos = filterPendingSpent(
       raw
         .filter(
