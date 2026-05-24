@@ -1,4 +1,4 @@
-import { Transaction } from "@meshsdk/core";
+import { Transaction, BrowserWallet } from "@meshsdk/core";
 import { adaToLovelace } from "@/lib/utils/lovelaceConversion";
 import { isValidPreprodAddress, normalizeToB32, getWalletAddressBech32 } from "@/lib/utils/addressUtils";
 import { submitTransaction } from "@/lib/mesh/submitTx";

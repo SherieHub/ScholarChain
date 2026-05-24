@@ -1,5 +1,9 @@
-type Status = "Pending" | "Approved" | "Rejected" | "Paid";
+import React from 'react';
 
+// Define the exact literal types allowed for the status
+export type Status = "Pending" | "Approved" | "Rejected" | "Paid";
+
+// Map each status to its specific Tailwind CSS color scheme
 const statusStyles: Record<Status, string> = {
   Pending:  "bg-yellow-900 text-yellow-300 border border-yellow-700",
   Approved: "bg-green-900 text-green-300 border border-green-700",
@@ -8,9 +12,13 @@ const statusStyles: Record<Status, string> = {
 };
 
 export default function StatusBadge({ status }: { status: Status }) {
+  // Fallback in case an invalid status accidentally gets passed in
+  const safeStyle = statusStyles[status] || "bg-gray-800 text-gray-300 border border-gray-600";
+  const safeText = statusStyles[status] ? status : "Unknown";
+
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusStyles[status]}`}>
-      {status}
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${safeStyle}`}>
+      {safeText}
     </span>
   );
 }

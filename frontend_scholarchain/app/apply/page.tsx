@@ -2,6 +2,12 @@
 
 import dynamic from "next/dynamic";
 import BackButton from "@/components/ui/BackButton";
+import ScholarApplicationForm from '@/components/forms/ScholarApplicationForm';
+
+export const metadata = {
+  title: 'Apply for Scholarship',
+  description: 'Submit your application for the scholarship program.',
+};
 
 const WalletGate = dynamic(() => import("@/components/wallet/WalletGate"), { ssr: false });
 const ScholarApplicationForm = dynamic(
