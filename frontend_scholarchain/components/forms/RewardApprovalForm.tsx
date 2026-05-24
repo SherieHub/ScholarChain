@@ -11,7 +11,7 @@ export default function RewardApprovalForm({ scholarId: _scholarId, onApprove, i
   const [ada, setAda] = useState("");
   const [tokens, setTokens] = useState("");
 
-  const isValid = Number(ada) > 0 && Number(tokens) >= 0;
+  const isValid = Number(ada) > 0 && Number(tokens) > 0;
 
   const handleApprove = async () => {
     if (!isValid) return;

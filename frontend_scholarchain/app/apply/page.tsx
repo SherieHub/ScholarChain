@@ -1,6 +1,13 @@
+"use client";
+
+import dynamic from "next/dynamic";
 import BackButton from "@/components/ui/BackButton";
-import ScholarApplicationForm from "@/components/forms/ScholarApplicationForm";
-import WalletGate from "@/components/wallet/WalletGate";
+
+const WalletGate = dynamic(() => import("@/components/wallet/WalletGate"), { ssr: false });
+const ScholarApplicationForm = dynamic(
+  () => import("@/components/forms/ScholarApplicationForm"),
+  { ssr: false }
+);
 
 export default function ApplyPage() {
   return (

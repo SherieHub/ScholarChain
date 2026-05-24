@@ -5,6 +5,10 @@ import { normalizeToB32, getWalletAddressBech32 } from "@/lib/utils/addressUtils
 import { submitTransaction } from "@/lib/mesh/submitTx";
 import { filterPendingSpent, markUtxosSpent } from "@/lib/mesh/pendingUtxos";
 
+// Cardano native-token unit = policyId + hex(assetName).
+// "SCHOLAR" → 5343484f4c4152
+const SCHOLAR_ASSET_NAME_HEX = "5343484f4c4152";
+
 export async function sendMultiAssetReward(
   wallet: any,
   recipientAddress: string,
@@ -18,7 +22,8 @@ export async function sendMultiAssetReward(
   }
 
   const lovelace = adaToLovelace(adaAmount);
-  const tokenUnit = `${config.tokenPolicyId}SCHOLAR`;
+  // Unit format: policyId + hex(assetName) — required by Cardano ledger and MeshJS
+  const tokenUnit = `${config.tokenPolicyId}${SCHOLAR_ASSET_NAME_HEX}`;
   const normalizedAddress = normalizeToB32(recipientAddress);
   const changeAddress = await getWalletAddressBech32(wallet);
 
