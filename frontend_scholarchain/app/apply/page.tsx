@@ -1,8 +1,5 @@
-"use client";
-
 import dynamic from "next/dynamic";
 import BackButton from "@/components/ui/BackButton";
-import ScholarApplicationForm from '@/components/forms/ScholarApplicationForm';
 
 export const metadata = {
   title: 'Apply for Scholarship',

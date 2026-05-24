@@ -1,8 +1,5 @@
-"use client";
-
 import dynamic from "next/dynamic";
 import BackButton from "@/components/ui/BackButton";
-import SponsorEntryForm from '@/components/forms/SponsorEntryForm';
 
 export const metadata = {
   title: 'Sponsor Pledge Entry | ScholarChain',
@@ -18,7 +15,6 @@ const SponsorEntryForm = dynamic(
 export default function SponsorEntryPage() {
   return (
     <main className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-      {/* Background glows */}
       <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-blue-600/8 blur-3xl" />
       <div className="pointer-events-none absolute bottom-0 right-1/4 w-[300px] h-[300px] rounded-full bg-indigo-600/8 blur-3xl" />
 
