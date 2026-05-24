@@ -1,10 +1,7 @@
+"use client";
+
 import dynamic from "next/dynamic";
 import BackButton from "@/components/ui/BackButton";
-
-export const metadata = {
-  title: 'Sponsor Pledge Entry | ScholarChain',
-  description: 'Enter new sponsor pledges to fund the scholarship program.',
-};
 
 const WalletGate = dynamic(() => import("@/components/wallet/WalletGate"), { ssr: false });
 const SponsorEntryForm = dynamic(
@@ -14,11 +11,8 @@ const SponsorEntryForm = dynamic(
 
 export default function SponsorEntryPage() {
   return (
-    <main className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] rounded-full bg-blue-600/8 blur-3xl" />
-      <div className="pointer-events-none absolute bottom-0 right-1/4 w-[300px] h-[300px] rounded-full bg-indigo-600/8 blur-3xl" />
-
-      <div className="max-w-3xl mx-auto">
+    <main className="flex flex-col items-center py-12 px-4">
+      <div className="w-full max-w-lg flex flex-col gap-6">
         <BackButton href="/" />
         <div>
           <h1 className="text-3xl font-bold mb-1">Sponsor Registration</h1>
