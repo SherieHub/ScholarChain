@@ -87,9 +87,9 @@ export default function ScholarTable({
               </td>
               <td className="px-4 py-3">
                 {processingId === scholar.id ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-blue-400 text-xs">Sending...</span>
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-sky-950/60 border border-sky-500/30 rounded-lg">
+                    <div className="h-3.5 w-3.5 border-2 border-sky-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sky-300 text-xs font-medium tracking-wide">Sending...</span>
                   </div>
                 ) : scholar.status === "Pending" ? (
                   <MintNFTButton
@@ -104,9 +104,32 @@ export default function ScholarTable({
                   <button
                     onClick={() => onSend(scholar)}
                     disabled={processingId !== null || mintingId !== null}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors"
+                    className={[
+                      "group relative inline-flex items-center gap-1.5 px-3 py-1.5",
+                      "bg-gradient-to-r from-blue-600 to-cyan-500",
+                      "hover:from-blue-500 hover:to-cyan-400",
+                      "disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed",
+                      "text-white text-xs font-semibold rounded-lg",
+                      "shadow-md shadow-blue-900/50 hover:shadow-blue-500/50",
+                      "hover:-translate-y-px active:translate-y-0",
+                      "ring-1 ring-white/10 hover:ring-cyan-400/30",
+                      "transition-all duration-150",
+                      "disabled:shadow-none disabled:translate-y-0 disabled:ring-white/5",
+                    ].join(" ")}
                   >
-                    Send 5 tADA →
+                    {/* Subtle inner shimmer on hover */}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150
+                                 bg-gradient-to-b from-white/10 to-transparent"
+                    />
+                    <span className="relative font-bold text-cyan-200 group-hover:text-white transition-colors">
+                      ₳
+                    </span>
+                    <span className="relative">Send 5 tADA</span>
+                    <span className="relative text-blue-200 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-150">
+                      →
+                    </span>
                   </button>
                 ) : (
                   <span className="text-gray-600 text-xs">—</span>
