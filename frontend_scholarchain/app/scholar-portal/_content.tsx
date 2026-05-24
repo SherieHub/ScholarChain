@@ -151,7 +151,7 @@ function PortalContent() {
           </div>
           <button
             onClick={handleDisconnect}
-            className="inline-flex items-center gap-1.5 text-sm text-slate-300 hover:text-white border border-white/[0.10] hover:border-white/[0.22] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 font-medium"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-400/50 bg-red-500/5 hover:bg-red-500/10 rounded-xl px-5 py-2 transition-all duration-150"
           >
             Cancel and disconnect
           </button>
@@ -179,13 +179,13 @@ function PortalContent() {
           <div className="flex flex-col gap-2 w-full">
             <button
               onClick={retry}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
             >
               Try Again
             </button>
             <button
               onClick={handleDisconnect}
-              className="inline-flex items-center justify-center gap-1.5 text-sm text-slate-300 hover:text-white border border-white/[0.10] hover:border-white/[0.22] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 font-medium"
+              className="w-full inline-flex items-center justify-center text-sm font-medium text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-400/50 bg-red-500/5 hover:bg-red-500/10 rounded-xl py-2.5 transition-all duration-150"
             >
               Disconnect and use a different wallet
             </button>
@@ -224,13 +224,13 @@ function PortalContent() {
           <div className="flex flex-col gap-2 w-full">
             <button
               onClick={retry}
-              className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2.5 rounded-xl transition-colors"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
             >
               Try Again
             </button>
             <button
               onClick={handleDisconnect}
-              className="inline-flex items-center justify-center gap-1.5 text-sm text-slate-300 hover:text-white border border-white/[0.10] hover:border-white/[0.22] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 font-medium"
+              className="w-full inline-flex items-center justify-center text-sm font-medium text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-400/50 bg-red-500/5 hover:bg-red-500/10 rounded-xl py-2.5 transition-all duration-150"
             >
               Disconnect
             </button>
@@ -301,7 +301,7 @@ function PortalContent() {
         )}
         <button
           onClick={handleDisconnect}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-300 hover:text-white border border-white/[0.10] hover:border-white/[0.22] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 font-medium"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-400/50 bg-red-500/5 hover:bg-red-500/10 rounded-xl px-5 py-2.5 transition-all duration-150"
         >
           Disconnect and try another wallet
         </button>

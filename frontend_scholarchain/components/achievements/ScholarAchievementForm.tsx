@@ -57,7 +57,7 @@ export default function ScholarAchievementForm({
     return Object.keys(e).length === 0;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!validate()) return;
     await onSubmit(form as Omit<FormData, "achievementType"> & { achievementType: AchievementType });
@@ -171,7 +171,7 @@ export default function ScholarAchievementForm({
           type="button"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center gap-1.5 text-sm text-slate-300 hover:text-white border border-white/[0.10] hover:border-white/[0.22] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 font-medium disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-slate-300 hover:text-white border border-white/[0.18] hover:border-white/[0.30] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 disabled:opacity-50"
         >
           Cancel
         </button>

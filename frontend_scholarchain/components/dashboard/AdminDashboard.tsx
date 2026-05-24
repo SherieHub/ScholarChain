@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useScholarData } from "@/hooks/useScholarData";
 import ScholarTable, { SkeletonRow } from "@/components/dashboard/ScholarTable";
 import PendingRewardsTable from "@/components/dashboard/PendingRewardsTable";
+import ScholarAchievementsReviewTable from "@/components/dashboard/ScholarAchievementsReviewTable";
 import SponsorTable from "@/components/dashboard/SponsorTable";
 import TreasuryMintPanel from "@/components/dashboard/TreasuryMintPanel";
 import SendScholarshipForm from "@/components/forms/SendScholarshipForm";
@@ -14,6 +15,7 @@ import BackButton from "@/components/ui/BackButton";
 import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { sendADA } from "@/lib/mesh/sendAda";
 import { updateScholarPolicyId, getPendingRewardScholars, markRewardAsPaid } from "@/lib/firebase/scholars";
+import { getAllPendingAchievements, updateAchievementStatus } from "@/lib/firebase/scholarAchievements";
 import { getScholarshipsByCurrentSemester, approveScholarship, markScholarshipPaid, expireStaleScholarships } from "@/lib/firebase/scholarships";
 import { getAllSponsors } from "@/lib/firebase/sponsors";
 import { parseTxError } from "@/lib/mesh/errorHandler";
@@ -24,6 +26,7 @@ import WalletStatus from "@/components/wallet/WalletStatus";
 import WalletGate from "@/components/wallet/WalletGate";
 import TxHashLink from "@/components/transparency/TxHashLink";
 import type { Scholar, Scholarship, Sponsor } from "@/types";
+import type { ScholarAchievement } from "@/types/scholarAchievement";
 import { getCurrentSemester } from "@/lib/utils/semesterUtils";
 
 const SCHOLARSHIP_AMOUNT_ADA = "5";
@@ -71,6 +74,8 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("table");
   const [pendingRewards, setPendingRewards] = useState<Scholar[]>([]);
   const [rewardsLoading, setRewardsLoading] = useState(false);
+  const [pendingAchievements, setPendingAchievements] = useState<ScholarAchievement[]>([]);
+  const [achievementProcessingId, setAchievementProcessingId] = useState<string | null>(null);
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [sponsorsLoading, setSponsorsLoading] = useState(false);
   // scholarId → current-semester scholarship record
@@ -105,12 +110,43 @@ export default function AdminDashboard() {
   const loadPendingRewards = async () => {
     setRewardsLoading(true);
     try {
-      const data = await getPendingRewardScholars();
-      setPendingRewards(data);
+      const [scholars, achievements] = await Promise.all([
+        getPendingRewardScholars(),
+        getAllPendingAchievements(),
+      ]);
+      setPendingRewards(scholars);
+      setPendingAchievements(achievements);
     } catch {
       setPendingRewards([]);
+      setPendingAchievements([]);
     } finally {
       setRewardsLoading(false);
+    }
+  };
+
+  const handleApproveAchievement = async (achievement: ScholarAchievement) => {
+    if (!achievement.id) return;
+    setAchievementProcessingId(achievement.id);
+    try {
+      await updateAchievementStatus(achievement.id, "Approved");
+      setPendingAchievements((prev) => prev.filter((a) => a.id !== achievement.id));
+    } catch (err: unknown) {
+      setRowErrors((prev) => ({ ...prev, [`ach_${achievement.id}`]: parseTxError(err) }));
+    } finally {
+      setAchievementProcessingId(null);
+    }
+  };
+
+  const handleRejectAchievement = async (achievement: ScholarAchievement, note: string) => {
+    if (!achievement.id) return;
+    setAchievementProcessingId(achievement.id);
+    try {
+      await updateAchievementStatus(achievement.id, "Rejected", note);
+      setPendingAchievements((prev) => prev.filter((a) => a.id !== achievement.id));
+    } catch (err: unknown) {
+      setRowErrors((prev) => ({ ...prev, [`ach_${achievement.id}`]: parseTxError(err) }));
+    } finally {
+      setAchievementProcessingId(null);
     }
   };
 
@@ -373,15 +409,33 @@ export default function AdminDashboard() {
         )}
 
         {activeTab === "rewards" && (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             {rewardsLoading ? (
               <p className="text-sm text-slate-500">Loading...</p>
             ) : (
-              <PendingRewardsTable
-                scholars={pendingRewards}
-                onApproveReward={handleApproveReward}
-                processingId={rewardProcessingId}
-              />
+              <>
+                {/* New achievements from the Achievements module */}
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Achievement Submissions</h3>
+                  <ScholarAchievementsReviewTable
+                    achievements={pendingAchievements}
+                    scholars={scholars}
+                    onApprove={handleApproveAchievement}
+                    onReject={handleRejectAchievement}
+                    processingId={achievementProcessingId}
+                  />
+                </div>
+
+                {/* Legacy proof-of-achievement reward flow */}
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Token Reward Queue</h3>
+                  <PendingRewardsTable
+                    scholars={pendingRewards}
+                    onApproveReward={handleApproveReward}
+                    processingId={rewardProcessingId}
+                  />
+                </div>
+              </>
             )}
 
             {/* Token reward success banners */}

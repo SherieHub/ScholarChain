@@ -48,6 +48,26 @@ export async function getAchievementsByScholarId(
   });
 }
 
+export async function getAllPendingAchievements(): Promise<ScholarAchievement[]> {
+  const q = query(
+    collection(db, COL),
+    where("status", "==", "Pending Review"),
+    orderBy("submittedAt", "asc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => {
+    const raw = d.data();
+    return {
+      ...raw,
+      id: d.id,
+      submittedAt:
+        raw.submittedAt instanceof Timestamp
+          ? raw.submittedAt.toDate().toISOString()
+          : String(raw.submittedAt ?? ""),
+    } as ScholarAchievement;
+  });
+}
+
 export async function updateAchievementStatus(
   id: string,
   status: ScholarAchievement["status"],
