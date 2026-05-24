@@ -133,6 +133,19 @@ export async function getAllScholars(): Promise<Scholar[]> {
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Scholar));
 }
 
+/** Sum of all SCHOLAR tokens distributed via achievement rewards. */
+export async function getTotalTokensDistributed(): Promise<number> {
+  const q = query(
+    collection(db, SCHOLARS_COLLECTION),
+    where("achievement.rewardStatus", "==", "Paid")
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.reduce((sum, d) => {
+    const tokens = d.data()?.achievement?.tokensRewarded ?? 0;
+    return sum + Number(tokens);
+  }, 0);
+}
+
 /** Update a scholar's policyId and scholarTokenId after NFT mint, marks status Approved */
 export async function updateScholarPolicyId(
   scholarId: string,

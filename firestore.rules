@@ -1,0 +1,55 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── scholars ──────────────────────────────────────────────────────────────
+    // Any connected wallet can create (apply). Updates are made by the app
+    // on behalf of the scholar (achievement submit) or admin (mint, approve).
+    match /scholars/{scholarId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(["name", "course", "walletAddress", "status"]);
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // ── scholarships ──────────────────────────────────────────────────────────
+    // Scholars create their own enrollment; admin updates status.
+    match /scholarships/{docId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(["scholarId", "walletAddress", "semester", "status"]);
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // ── sponsors ──────────────────────────────────────────────────────────────
+    // Anyone can pledge; no updates or deletes from client.
+    match /sponsors/{sponsorId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(["pledgedAmount"]);
+      allow update, delete: if false;
+    }
+
+    // ── scholarAchievements ───────────────────────────────────────────────────
+    // Scholars create entries; admin updates status/note; readable by everyone.
+    match /scholarAchievements/{docId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(["scholarId", "achievementName", "achievementType", "issuingOrganization", "dateAchieved", "proofLink"]);
+      allow update: if true;
+      allow delete: if false;
+    }
+
+    // ── config ────────────────────────────────────────────────────────────────
+    // Single document at config/config. Admin dashboard updates policy IDs
+    // after NFT and token mints; readable by everyone (portal, dashboard).
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -13,6 +13,7 @@ import { getWalletAddressBech32 } from "@/lib/utils/addressUtils";
 import type { Scholar, Scholarship } from "@/types";
 import ScholarshipStatusCard from "@/components/ui/ScholarshipStatusCard";
 import ReEnrollForm from "@/components/forms/ReEnrollForm";
+import AchievementsPanel from "@/components/achievements/AchievementsPanel";
 
 // ── Step progress indicator ───────────────────────────────────────────────────
 type Step = 1 | 2 | 3;
@@ -113,15 +114,11 @@ function PortalContent() {
     setBadgeImageUri(undefined);
   };
 
-  const handleSubmitAchievement = async (data: {
-    subject: string;
-    grade: string;
-    proofLink: string;
-  }) => {
+  const handleSubmitAchievement = async (data: { proofLink: string }) => {
     if (!scholar?.id) return;
     setIsSubmittingAchievement(true);
     try {
-      await submitAchievement(scholar.id, data);
+      await submitAchievement(scholar.id, { subject: "", grade: "", proofLink: data.proofLink });
       // Refresh scholar so dashboard immediately shows "Under Review" status
       if (walletAddress) {
         const updated = await getScholarByWalletAddress(walletAddress);
@@ -144,7 +141,7 @@ function PortalContent() {
           <div>
             <h2 className="text-lg font-bold text-white mb-1">Signature Required</h2>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Your wallet will ask you to sign a short message to prove ownership. No ADA is spent
+              Your wallet will ask you to sign a short message to prove ownership. No tADA is spent
               — this is a read-only authentication step.
             </p>
           </div>
@@ -154,7 +151,7 @@ function PortalContent() {
           </div>
           <button
             onClick={handleDisconnect}
-            className="text-sm text-slate-500 hover:text-slate-300 underline transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-300 hover:text-white border border-white/[0.10] hover:border-white/[0.22] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 font-medium"
           >
             Cancel and disconnect
           </button>
@@ -175,7 +172,7 @@ function PortalContent() {
           <div>
             <h2 className="text-lg font-bold text-white mb-1">Authentication Cancelled</h2>
             <p className="text-slate-400 text-sm leading-relaxed">
-              You closed the signing window before approving. Sign the message to continue — no ADA
+              You closed the signing window before approving. Sign the message to continue — no tADA
               is spent.
             </p>
           </div>
@@ -188,7 +185,7 @@ function PortalContent() {
             </button>
             <button
               onClick={handleDisconnect}
-              className="text-sm text-slate-500 hover:text-slate-300 underline transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 text-sm text-slate-300 hover:text-white border border-white/[0.10] hover:border-white/[0.22] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 font-medium"
             >
               Disconnect and use a different wallet
             </button>
@@ -233,7 +230,7 @@ function PortalContent() {
             </button>
             <button
               onClick={handleDisconnect}
-              className="text-sm text-slate-500 hover:text-slate-300 underline transition-colors"
+              className="inline-flex items-center justify-center gap-1.5 text-sm text-slate-300 hover:text-white border border-white/[0.10] hover:border-white/[0.22] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 font-medium"
             >
               Disconnect
             </button>
@@ -275,6 +272,9 @@ function PortalContent() {
             }
           />
         ) : null}
+
+        {/* Achievements module */}
+        <AchievementsPanel scholarId={scholar.id!} />
       </div>
     );
   }
@@ -301,7 +301,7 @@ function PortalContent() {
         )}
         <button
           onClick={handleDisconnect}
-          className="text-sm text-slate-400 hover:text-white underline transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-300 hover:text-white border border-white/[0.10] hover:border-white/[0.22] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 font-medium"
         >
           Disconnect and try another wallet
         </button>

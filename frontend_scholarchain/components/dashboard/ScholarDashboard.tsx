@@ -14,7 +14,7 @@ interface ScholarDashboardProps {
   walletBalance: string;
   badgeImageUri?: string;
   onDisconnect: () => void;
-  onSubmitAchievement?: (data: { subject: string; grade: string; proofLink: string }) => Promise<void>;
+  onSubmitAchievement?: (data: { proofLink: string }) => Promise<void>;
   isSubmittingAchievement?: boolean;
 }
 
@@ -41,7 +41,7 @@ export default function ScholarDashboard({
         </div>
         <button
           onClick={onDisconnect}
-          className="text-sm text-slate-400 hover:text-white underline transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-red-300 border border-white/[0.08] hover:border-red-500/30 bg-white/[0.03] hover:bg-red-500/5 rounded-lg px-3 py-1.5 transition-all duration-150 font-medium"
         >
           Disconnect
         </button>

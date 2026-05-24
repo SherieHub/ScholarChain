@@ -24,7 +24,7 @@ export default function SendScholarshipForm({
       return false;
     }
     if (!adaAmount || Number(adaAmount) <= 0 || !Number.isInteger(Number(adaAmount))) {
-      setValidationError("ADA amount must be a positive whole number.");
+      setValidationError("tADA amount must be a positive whole number.");
       return false;
     }
     setValidationError("");
@@ -62,7 +62,7 @@ export default function SendScholarshipForm({
 
         <div>
           <label htmlFor="ada-amount" className="block text-xs text-slate-400 mb-1.5 uppercase tracking-wide">
-            ADA Amount
+            tADA Amount
           </label>
           <input
             id="ada-amount"

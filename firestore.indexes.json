@@ -1,0 +1,30 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "scholarships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "walletAddress", "order": "ASCENDING" },
+        { "fieldPath": "semester",      "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "scholarships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "scholarId", "order": "ASCENDING" },
+        { "fieldPath": "semester",  "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "scholarships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "semester",   "order": "ASCENDING" },
+        { "fieldPath": "status",     "order": "ASCENDING" },
+        { "fieldPath": "createdAt",  "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

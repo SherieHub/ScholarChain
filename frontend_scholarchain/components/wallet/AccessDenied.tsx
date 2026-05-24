@@ -29,9 +29,9 @@ export default function AccessDenied({ walletAddress, onDisconnect }: AccessDeni
       </div>
       <button
         onClick={onDisconnect}
-        className="text-sm text-slate-400 hover:text-white underline transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-300 hover:text-white border border-white/[0.10] hover:border-white/[0.22] bg-white/[0.04] hover:bg-white/[0.08] rounded-xl px-5 py-2.5 transition-all duration-150 font-medium"
       >
-        Disconnect and try another wallet
+        Disconnect &amp; Try Another Wallet
       </button>
     </div>
   );

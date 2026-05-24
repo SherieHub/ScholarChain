@@ -5,40 +5,62 @@ export interface SemesterInfo {
 }
 
 /**
- * Philippine academic calendar — 4 months per term:
- *   1st Sem : August   – November
- *   2nd Sem : December – March
- *   Summer  : April    – July
+ * Standard academic calendar:
+ *   1st Sem  : August 15   – December 31
+ *   2nd Sem  : January 15  – May 31
+ *   Mid Year : June 1      – July 31
  */
 export function getSemesterFromDate(date: Date): SemesterInfo {
   const month = date.getMonth() + 1; // 1–12
-  const year = date.getFullYear();
+  const day   = date.getDate();
+  const year  = date.getFullYear();
 
   // Academic year label: AY starts in August
   const ayStart = month >= 8 ? year : year - 1;
   const ayLabel = `${ayStart}-${ayStart + 1}`;
 
-  if (month >= 8 && month <= 11) {
+  // Aug 15 – Dec 31  →  1st Sem
+  if (month >= 9 || (month === 8 && day >= 15)) {
     return {
       label: `1st Sem AY ${ayLabel}`,
-      start: new Date(year, 7, 1),    // Aug 1
-      end:   new Date(year, 10, 30),  // Nov 30
+      start: new Date(year, 7, 15),   // Aug 15
+      end:   new Date(year, 11, 31),  // Dec 31
     };
   }
 
-  if (month === 12 || month <= 3) {
-    const decYear = month === 12 ? year : year - 1;
+  // Jan 15 – May 31  →  2nd Sem
+  if ((month === 1 && day >= 15) || (month >= 2 && month <= 5)) {
     return {
       label: `2nd Sem AY ${ayLabel}`,
-      start: new Date(decYear, 11, 1),      // Dec 1
-      end:   new Date(decYear + 1, 2, 31),  // Mar 31
+      start: new Date(year, 0, 15),  // Jan 15
+      end:   new Date(year, 4, 31),  // May 31
     };
   }
 
-  // Apr – Jul  →  Summer
+  // Jun 1 – Jul 31  →  Mid Year
+  if (month === 6 || month === 7) {
+    return {
+      label: `Mid Year AY ${ayLabel}`,
+      start: new Date(year, 5, 1),   // Jun 1
+      end:   new Date(year, 6, 31),  // Jul 31
+    };
+  }
+
+  // Jan 1–14 and Aug 1–14 are transition gaps — treat as the semester
+  // that just ended (next semester hasn't started yet).
+  // Jan 1–14: still under 1st Sem of the previous AY
+  if (month === 1) {
+    return {
+      label: `1st Sem AY ${ayStart - 1}-${ayStart}`,
+      start: new Date(year - 1, 7, 15),  // Aug 15 of prev year
+      end:   new Date(year - 1, 11, 31), // Dec 31 of prev year
+    };
+  }
+
+  // Aug 1–14: still under Mid Year of the current AY
   return {
-    label: `Summer AY ${ayLabel}`,
-    start: new Date(year, 3, 1),  // Apr 1
+    label: `Mid Year AY ${ayLabel}`,
+    start: new Date(year, 5, 1),  // Jun 1
     end:   new Date(year, 6, 31), // Jul 31
   };
 }

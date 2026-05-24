@@ -1,141 +1,109 @@
-import Link from "next/link";
-import { LayoutDashboard, GraduationCap, Handshake, BarChart3, Shield } from "lucide-react";
+"use client";
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import dynamic from "next/dynamic";
 
-const cards = [
-  {
-    href: "/admin",
-    icon: LayoutDashboard,
-    title: "Admin Portal",
-    desc: "Connect your wallet to manage scholarship payments.",
-    color: "blue",
-  },
-  {
-    href: "/apply",
-    icon: GraduationCap,
-    title: "Apply for Scholarship",
-    desc: "Students: connect wallet and submit your application.",
-    color: "indigo",
-  },
-  {
-    href: "/sponsor-entry",
-    icon: Handshake,
-    title: "Sponsor Registration",
-    desc: "Sponsors: register your pledge here.",
-    color: "violet",
-  },
-  {
-    href: "/scholar-portal",
-    icon: Shield,
-    title: "Scholar Portal",
-    desc: "Scholars: verify your NFT badge and submit achievements.",
-    color: "green",
-  },
-  {
-    href: "/transparency",
-    icon: BarChart3,
-    title: "Transparency Dashboard",
-    desc: "Live on-chain treasury data — no wallet required.",
-    color: "cyan",
-  },
-];
+type Role = "admin" | "scholar" | "sponsor";
 
-const steps = [
-  {
-    n: "1",
-    label: "Apply",
-    desc: "Students submit applications with their Cardano wallet address.",
-  },
-  {
-    n: "2",
-    label: "Approve",
-    desc: "Admin reviews and approves scholars via the dashboard.",
-  },
-  {
-    n: "3",
-    label: "Get Paid on Cardano",
-    desc: "ADA transfers are signed on-chain — verifiable by anyone.",
-  },
-];
+// Dynamically imported — avoids MeshJS SSR issues
+const LandingWalletGate = dynamic(
+  () => import("@/components/landing/LandingWalletGate"),
+  { ssr: false, loading: () => null }
+);
 
 export default function Home() {
+  const [showName, setShowName] = useState(false);
+  const [showRoles, setShowRoles] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [gateVisible, setGateVisible] = useState(false);
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setShowName(true), 1100);
+    const t2 = setTimeout(() => setShowRoles(true), 2000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, []);
+
+  const handleRoleSelect = (role: Role) => {
+    setGateVisible(false);
+    setSelectedRole(role);
+    setTimeout(() => setGateVisible(true), 80);
+  };
+
   return (
-    <main className="relative flex flex-col items-center justify-center flex-1 px-6 py-20 text-center overflow-hidden">
+    <main className="relative flex flex-col items-center justify-center flex-1 px-6 py-16 text-center overflow-hidden">
+      {/* Ambient blobs */}
+      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] rounded-full bg-blue-600/[0.07] blur-3xl" />
+      <div className="pointer-events-none absolute bottom-0 right-1/4 w-[350px] h-[350px] rounded-full bg-indigo-600/[0.07] blur-3xl" />
+
       <div className="relative z-10 max-w-2xl w-full flex flex-col items-center gap-10">
 
-        {/* ── Animated gradient header ── */}
-        <div className="flex flex-col items-center gap-4">
-          <h1 className="text-6xl font-bold tracking-tight text-gradient-animated">
-            ScholarChain
-          </h1>
-          <p className="text-slate-400 text-lg leading-relaxed max-w-md">
-            Transparent, blockchain-verified scholarship management on Cardano.
-          </p>
+        {/* ── Phase 1: Logo plays entrance keyframe immediately ── */}
+        <div
+          className="relative"
+          style={{ animation: "logo-entrance 1.2s cubic-bezier(0.22, 1, 0.36, 1) both" }}
+        >
+          <div
+            className="absolute -inset-4 rounded-[2rem] blur-2xl"
+            style={{ background: "radial-gradient(circle, rgba(99,102,241,0.4) 0%, rgba(59,130,246,0.2) 50%, transparent 70%)" }}
+          />
+          <Image
+            src="/logo.png"
+            alt="ScholarChain"
+            width={108}
+            height={108}
+            className="relative rounded-3xl shadow-2xl shadow-blue-900/60 ring-1 ring-white/10"
+            priority
+          />
         </div>
 
-        {/* ── Glassmorphism nav cards with shimmer ── */}
-        <div className="grid sm:grid-cols-3 gap-4 w-full">
-          {cards.map(({ href, icon: Icon, title, desc, color }) => (
-            <Link
-              key={href}
-              href={href}
-              className="group relative flex flex-col items-start gap-3 bg-white/[0.02] backdrop-blur-md border border-white/[0.06] hover:border-blue-500/40 hover:bg-white/[0.05] rounded-2xl p-5 text-left transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand overflow-hidden"
-            >
-              {/* Shimmer sweep on hover */}
-              <div
-                className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                style={{
-                  background:
-                    "linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.04) 50%, transparent 60%)",
-                  animation: "shimmer-sweep 1.8s ease-in-out infinite",
-                }}
-              />
+        {/* ── Phase 2: Name fades in after logo settles ── */}
+        {showName && (
+          <div style={{ animation: "fade-slide-up 0.7s ease-out both" }}>
+            <h1 className="text-5xl font-bold tracking-tight text-gradient-animated leading-tight">
+              ScholarChain
+            </h1>
+            <p className="text-slate-400 text-base leading-relaxed max-w-sm mt-2 mx-auto">
+              Transparent, blockchain-verified scholarship management on Cardano.
+            </p>
+          </div>
+        )}
 
-              <div
-                className={`relative z-10 w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300
-                  ${color === "blue"   ? "bg-blue-500/10 border border-blue-500/20 group-hover:bg-blue-500/25 group-hover:shadow-[0_0_16px_rgba(59,130,246,0.3)]"   : ""}
-                  ${color === "indigo" ? "bg-indigo-500/10 border border-indigo-500/20 group-hover:bg-indigo-500/25 group-hover:shadow-[0_0_16px_rgba(99,102,241,0.3)]" : ""}
-                  ${color === "violet" ? "bg-violet-500/10 border border-violet-500/20 group-hover:bg-violet-500/25 group-hover:shadow-[0_0_16px_rgba(139,92,246,0.3)]" : ""}
-                  ${color === "green"  ? "bg-green-500/10 border border-green-500/20 group-hover:bg-green-500/25 group-hover:shadow-[0_0_16px_rgba(34,197,94,0.3)]"    : ""}
-                  ${color === "cyan"   ? "bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/25 group-hover:shadow-[0_0_16px_rgba(6,182,212,0.3)]"      : ""}
-                `}
-              >
-                <Icon
-                  className={`relative z-10 w-5 h-5
-                    ${color === "blue"   ? "text-blue-400"   : ""}
-                    ${color === "indigo" ? "text-indigo-400" : ""}
-                    ${color === "violet" ? "text-violet-400" : ""}
-                    ${color === "green"  ? "text-green-400"  : ""}
-                    ${color === "cyan"   ? "text-cyan-400"   : ""}
-                  `}
-                  aria-hidden="true"
-                />
-              </div>
-              <span className="relative z-10 text-white font-semibold">{title}</span>
-              <span className="relative z-10 text-slate-400 text-sm">{desc}</span>
-            </Link>
-          ))}
-        </div>
+        {/* ── Phase 3: Role selector ── */}
+        {showRoles && (
+          <div
+            className="w-full flex flex-col items-center gap-7"
+            style={{ animation: "fade-slide-up 0.6s ease-out both" }}
+          >
+            <p className="text-slate-500 text-xs uppercase tracking-[0.2em]">I am a</p>
 
-        {/* ── How It Works — pulsing glow badges ── */}
-        <div className="border-t border-white/[0.06] pt-8 w-full">
-          <h2 className="text-slate-300 font-semibold mb-6 tracking-widest uppercase text-xs">
-            How It Works
-          </h2>
-          <ol className="flex flex-col sm:flex-row gap-6 text-sm text-slate-400">
-            {steps.map(({ n, label, desc }, i) => (
-              <li key={n} className="flex-1 flex flex-col items-center gap-3">
-                <div
-                  className="w-11 h-11 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center"
-                  style={{ animation: `glow-pulse 3s ${i * 0.8}s ease-in-out infinite` }}
+            <div className="flex gap-3 flex-wrap justify-center">
+              {(["admin", "scholar", "sponsor"] as Role[]).map((role) => (
+                <button
+                  key={role}
+                  onClick={() => handleRoleSelect(role)}
+                  className={`px-7 py-3 rounded-xl font-semibold text-sm capitalize transition-all duration-200 border ${
+                    selectedRole === role
+                      ? "bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/50 scale-105"
+                      : "bg-white/[0.04] border-white/[0.10] text-slate-300 hover:bg-white/[0.08] hover:border-white/[0.2] hover:text-white hover:scale-105"
+                  }`}
                 >
-                  <span className="text-blue-400 font-bold text-sm">{n}</span>
-                </div>
-                <span className="font-semibold text-slate-200">{label}</span>
-                <span className="text-center leading-relaxed">{desc}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
+                  {role.charAt(0).toUpperCase() + role.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {/* ── Phase 4: Wallet gate for selected role ── */}
+            {selectedRole && gateVisible && (
+              <div
+                className="w-full"
+                style={{ animation: "fade-slide-up 0.45s ease-out both" }}
+              >
+                {/* key forces remount + re-validation when role switches */}
+                <LandingWalletGate key={selectedRole} role={selectedRole} />
+              </div>
+            )}
+          </div>
+        )}
 
       </div>
     </main>

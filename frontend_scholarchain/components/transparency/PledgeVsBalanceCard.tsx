@@ -25,7 +25,7 @@ function StatCard({
         <div className="h-8 w-32 bg-white/[0.06] rounded-lg animate-pulse" />
       ) : (
         <p className="text-2xl font-bold text-white">
-          {value} <span className="text-sm font-normal text-slate-400">ADA</span>
+          {value} <span className="text-sm font-normal text-slate-400">tADA</span>
         </p>
       )}
       <p className="text-xs text-slate-600">{source}</p>
@@ -47,7 +47,7 @@ export default function PledgeVsBalanceCard({
         <StatCard
           label="Total Pledged"
           value={totalPledgedADA.toFixed(2)}
-          source="📄 Firebase — sponsor pledges"
+          source="⛓️ Cardano on-chain — sponsor transactions"
           loading={loading}
         />
         <StatCard
@@ -82,7 +82,7 @@ export default function PledgeVsBalanceCard({
               </p>
               {!isAccountable && (
                 <p className="text-xs text-amber-400 mt-0.5">
-                  Unaccounted: {discrepancyADA.toFixed(2)} ADA
+                  Unaccounted: {discrepancyADA.toFixed(2)} tADA
                 </p>
               )}
             </div>

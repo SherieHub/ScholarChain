@@ -32,15 +32,17 @@ export default function SuccessMessage({ txHash, onReset }: SuccessMessageProps)
       <p className="text-slate-500 text-xs mb-4">Transaction confirmed on Cardano Preprod</p>
 
       <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-3 mb-4 text-left">
-        <p className="text-slate-500 text-xs mb-1 uppercase tracking-wide">Transaction Hash</p>
+        <p className="text-slate-500 text-xs mb-2 uppercase tracking-wide">Transaction Hash</p>
+        <p className="font-mono text-xs text-slate-400 break-all mb-2">{txHash}</p>
         <a
           href={cardanoscanUrl}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="View transaction on Cardanoscan (opens in new tab)"
-          className="text-blue-400 hover:text-blue-300 underline font-mono text-xs break-all transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-300 bg-blue-500/10 border border-blue-500/25 hover:bg-blue-500/20 hover:text-blue-200 hover:border-blue-400/40 rounded-lg px-3 py-1.5 transition-all duration-150"
         >
-          {txHash}
+          View on Cardanoscan
+          <ArrowRight className="w-3 h-3" aria-hidden="true" />
         </a>
       </div>
 

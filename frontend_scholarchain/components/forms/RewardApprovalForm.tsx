@@ -32,9 +32,16 @@ export default function RewardApprovalForm({ scholarId: _scholarId, onApprove, i
       <button
         onClick={handleApprove}
         disabled={!isValid || isProcessing}
-        className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors whitespace-nowrap"
       >
-        {isProcessing ? "Sending..." : "Send Tokens ✦"}
+        {isProcessing ? (
+          <>
+            <div className="h-3 w-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            Sending…
+          </>
+        ) : (
+          "Send Tokens ✦"
+        )}
       </button>
     </div>
   );

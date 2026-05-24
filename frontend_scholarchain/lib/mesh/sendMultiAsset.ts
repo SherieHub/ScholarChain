@@ -1,18 +1,19 @@
 import { Transaction, ForgeScript } from "@meshsdk/core";
 import type { Mint } from "@meshsdk/core";
-import { adaToLovelace } from "@/lib/utils/lovelaceConversion";
 import { normalizeToB32, getWalletAddressBech32 } from "@/lib/utils/addressUtils";
 import { submitTransaction } from "@/lib/mesh/submitTx";
 import { filterPendingSpent, markUtxosSpent } from "@/lib/mesh/pendingUtxos";
 
 const SCHOLAR_ASSET_NAME = "SCHOLAR";
+// Cardano protocol minimum — native tokens must carry ADA alongside them
+const MIN_UTxO_LOVELACE = "2000000";
 
-export async function sendMultiAssetReward(
+export async function sendTokenReward(
   wallet: any,
   recipientAddress: string,
   tokenAmount: number
-): Promise<{ txHash: string; adaSent: number; tokensSent: number }> {
-  const lovelace = adaToLovelace(adaAmount);
+): Promise<{ txHash: string; tokensSent: number }> {
+  const lovelace = MIN_UTxO_LOVELACE;
   const normalizedAddress = normalizeToB32(recipientAddress);
 
   // Use the wallet's change address for the ForgeScript — same pattern as mintNFT.ts.

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { getTotalPledgedADA } from "@/lib/firebase/sponsors";
+import { getTotalTokensDistributed } from "@/lib/firebase/scholars";
 
 interface TreasuryData {
   totalPledgedADA: number;
@@ -8,6 +9,7 @@ interface TreasuryData {
   totalPaidOutADA: number;
   discrepancyADA: number;
   isAccountable: boolean;
+  totalTokensDistributed: number;
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -28,6 +30,7 @@ export function useTreasuryData(): TreasuryData {
     totalPaidOutADA: 0,
     discrepancyADA: 0,
     isAccountable: true,
+    totalTokensDistributed: 0,
     loading: true,
     error: null,
   });
@@ -39,10 +42,11 @@ export function useTreasuryData(): TreasuryData {
 
     const load = async () => {
       try {
-        const [pledged, treasuryRes, txRes] = await Promise.all([
+        const [pledged, treasuryRes, txRes, tokens] = await Promise.all([
           getTotalPledgedADA(),
           safeFetch("/api/treasury").then(r => r.json()),
           safeFetch("/api/transactions").then(r => r.json()),
+          getTotalTokensDistributed(),
         ]);
 
         const liveBalanceADA: number = treasuryRes.adaBalance ?? 0;
@@ -55,6 +59,7 @@ export function useTreasuryData(): TreasuryData {
           totalPaidOutADA,
           discrepancyADA,
           isAccountable: discrepancyADA <= 0,
+          totalTokensDistributed: tokens,
           loading: false,
           error: null,
         });

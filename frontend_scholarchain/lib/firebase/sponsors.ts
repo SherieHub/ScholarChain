@@ -4,7 +4,9 @@ import type { Sponsor } from "@/types";
 
 const SPONSORS_COLLECTION = "sponsors";
 
-export async function addSponsor(data: Omit<Sponsor, "id" | "createdAt">): Promise<string> {
+export async function addSponsor(
+  data: Omit<Sponsor, "id" | "createdAt">
+): Promise<string> {
   const docRef = await addDoc(collection(db, SPONSORS_COLLECTION), {
     ...data,
     createdAt: serverTimestamp(),
@@ -17,7 +19,7 @@ export async function getAllSponsors(): Promise<Sponsor[]> {
   return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Sponsor));
 }
 
-/** Returns the sum of all sponsor pledgedAmount values (used in Inc 5) */
+/** Sum of all confirmed on-chain pledge amounts (used in Transparency Dashboard). */
 export async function getTotalPledgedADA(): Promise<number> {
   const sponsors = await getAllSponsors();
   return sponsors.reduce((sum, s) => sum + s.pledgedAmount, 0);

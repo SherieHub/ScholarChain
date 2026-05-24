@@ -6,7 +6,7 @@ export interface UniversityConfig {
   nftPolicyId: string;
   tokenPolicyId: string;
   adminWalletAddresses: string[];
-  scholarTokenTotalSupply: number;
+  scholarTokenTotalSupply?: number;
 }
 
 const CONFIG_DOC = doc(db, "config", "config");

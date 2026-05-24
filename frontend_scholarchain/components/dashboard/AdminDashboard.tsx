@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useScholarData } from "@/hooks/useScholarData";
 import ScholarTable, { SkeletonRow } from "@/components/dashboard/ScholarTable";
 import PendingRewardsTable from "@/components/dashboard/PendingRewardsTable";
+import SponsorTable from "@/components/dashboard/SponsorTable";
 import TreasuryMintPanel from "@/components/dashboard/TreasuryMintPanel";
 import SendScholarshipForm from "@/components/forms/SendScholarshipForm";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -14,6 +15,7 @@ import { useWalletConnection } from "@/hooks/useWalletConnection";
 import { sendADA } from "@/lib/mesh/sendAda";
 import { updateScholarPolicyId, getPendingRewardScholars, markRewardAsPaid } from "@/lib/firebase/scholars";
 import { getScholarshipsByCurrentSemester, approveScholarship, markScholarshipPaid, expireStaleScholarships } from "@/lib/firebase/scholarships";
+import { getAllSponsors } from "@/lib/firebase/sponsors";
 import { parseTxError } from "@/lib/mesh/errorHandler";
 import { getUniversityConfig, updateNftPolicyId } from "@/lib/firebase/config-store";
 import { mintScholarNFT } from "@/lib/mesh/mintNFT";
@@ -21,13 +23,13 @@ import { sendTokenReward } from "@/lib/mesh/sendMultiAsset";
 import WalletStatus from "@/components/wallet/WalletStatus";
 import WalletGate from "@/components/wallet/WalletGate";
 import TxHashLink from "@/components/transparency/TxHashLink";
-import type { Scholar, Scholarship } from "@/types";
+import type { Scholar, Scholarship, Sponsor } from "@/types";
 import { getCurrentSemester } from "@/lib/utils/semesterUtils";
 
 const SCHOLARSHIP_AMOUNT_ADA = "5";
 
 type TxState = "idle" | "processing" | "success" | "error";
-type ActiveTab = "table" | "manual" | "rewards" | "treasury";
+type ActiveTab = "table" | "manual" | "rewards" | "sponsors" | "treasury";
 
 export default function AdminDashboard() {
   const { wallet, address, connected, disconnect } = useWalletConnection();
@@ -63,9 +65,14 @@ export default function AdminDashboard() {
   const [rewardProcessingId, setRewardProcessingId] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
   const [mintSuccesses, setMintSuccesses] = useState<Record<string, string>>({});
+  // scholarId → txHash for completed sends / rewards
+  const [sendSuccesses, setSendSuccesses] = useState<Record<string, string>>({});
+  const [rewardSuccesses, setRewardSuccesses] = useState<Record<string, { txHash: string; tokens: number }>>({});
   const [activeTab, setActiveTab] = useState<ActiveTab>("table");
   const [pendingRewards, setPendingRewards] = useState<Scholar[]>([]);
   const [rewardsLoading, setRewardsLoading] = useState(false);
+  const [sponsors, setSponsors] = useState<Sponsor[]>([]);
+  const [sponsorsLoading, setSponsorsLoading] = useState(false);
   // scholarId → current-semester scholarship record
   const [scholarshipMap, setScholarshipMap] = useState<Map<string, Scholarship>>(new Map());
 
@@ -80,6 +87,18 @@ export default function AdminDashboard() {
       setScholarshipMap(new Map(list.map(s => [s.scholarId, s])));
     } catch {
       setScholarshipMap(new Map());
+    }
+  };
+
+  const loadSponsors = async () => {
+    setSponsorsLoading(true);
+    try {
+      const data = await getAllSponsors();
+      setSponsors(data);
+    } catch {
+      setSponsors([]);
+    } finally {
+      setSponsorsLoading(false);
     }
   };
 
@@ -126,9 +145,11 @@ export default function AdminDashboard() {
 
     setProcessingId(scholar.id);
     setRowErrors(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
+    setSendSuccesses(prev => { const next = { ...prev }; delete next[scholar.id!]; return next; });
     try {
       const hash = await sendADA(wallet, scholar.walletAddress, SCHOLARSHIP_AMOUNT_ADA);
       await markScholarshipPaid(scholarship.id, hash);
+      setSendSuccesses(prev => ({ ...prev, [scholar.id!]: hash }));
       await loadScholarships();
       refresh();
     } catch (err: unknown) {
@@ -168,9 +189,11 @@ export default function AdminDashboard() {
   const handleApproveReward = async (scholar: Scholar, tokenAmount: number) => {
     if (!wallet || !scholar.id) return;
     setRewardProcessingId(scholar.id);
+    setRowErrors(prev => { const next = { ...prev }; delete next[`reward_${scholar.id}`]; return next; });
     try {
       const { txHash: rewardTxHash } = await sendTokenReward(wallet, scholar.walletAddress, tokenAmount);
       await markRewardAsPaid(scholar.id, rewardTxHash, tokenAmount);
+      setRewardSuccesses(prev => ({ ...prev, [scholar.id!]: { txHash: rewardTxHash, tokens: tokenAmount } }));
       await loadPendingRewards();
     } catch (err: unknown) {
       setRowErrors(prev => ({ ...prev, [`reward_${scholar.id}`]: parseTxError(err) }));
@@ -199,6 +222,7 @@ export default function AdminDashboard() {
     { id: "table", label: "Scholar Table" },
     { id: "manual", label: "Manual Send" },
     { id: "rewards", label: "Rewards" },
+    { id: "sponsors", label: "Sponsors" },
     { id: "treasury", label: "Treasury" },
   ];
 
@@ -273,6 +297,7 @@ export default function AdminDashboard() {
               onClick={() => {
                 setActiveTab(id);
                 if (id === "rewards") loadPendingRewards();
+                if (id === "sponsors") loadSponsors();
               }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === id
@@ -303,20 +328,38 @@ export default function AdminDashboard() {
               />
             )}
 
-            {/* Mint success banners — use TxHashLink for third-party verifiability */}
+            {/* Mint success banners */}
             {Object.entries(mintSuccesses).map(([scholarId, hash]) => (
-              <div key={scholarId} className="flex items-center gap-3 text-xs bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
-                <span className="text-green-400 font-medium">Scholar ID Minted ✓</span>
-                <TxHashLink txHash={hash} label={`${hash.slice(0, 14)}...`} />
+              <div key={`mint_${scholarId}`} className="flex items-center justify-between bg-green-500/10 border border-green-500/20 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-green-400 text-base">✓</span>
+                  <span className="text-green-300 text-sm font-semibold">Scholar ID NFT Minted</span>
+                  <span className="text-green-500 text-xs">Transaction confirmed on-chain</span>
+                </div>
+                <TxHashLink txHash={hash} label="View Transaction" />
+              </div>
+            ))}
+
+            {/* Scholarship send success banners */}
+            {Object.entries(sendSuccesses).map(([scholarId, hash]) => (
+              <div key={`send_${scholarId}`} className="flex items-center justify-between bg-sky-500/10 border border-sky-500/20 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sky-400 text-base">✓</span>
+                  <span className="text-sky-300 text-sm font-semibold">5 tADA Scholarship Sent</span>
+                  <span className="text-sky-500 text-xs">Transaction confirmed on Cardano Preprod</span>
+                </div>
+                <TxHashLink txHash={hash} label="View Transaction" />
               </div>
             ))}
 
             {/* Transaction error banners */}
-            {Object.entries(rowErrors).map(([id, msg]) => (
-              <div key={id} className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-                Transaction error: {msg}
-              </div>
-            ))}
+            {Object.entries(rowErrors)
+              .filter(([id]) => !id.startsWith("reward_"))
+              .map(([id, msg]) => (
+                <div key={id} className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+                  Transaction error: {msg}
+                </div>
+              ))}
           </div>
         )}
 
@@ -340,6 +383,20 @@ export default function AdminDashboard() {
                 processingId={rewardProcessingId}
               />
             )}
+
+            {/* Token reward success banners */}
+            {Object.entries(rewardSuccesses).map(([scholarId, { txHash: rHash, tokens }]) => (
+              <div key={`reward_ok_${scholarId}`} className="flex items-center justify-between bg-violet-500/10 border border-violet-500/20 rounded-xl px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-violet-400 text-base">✓</span>
+                  <span className="text-violet-300 text-sm font-semibold">{tokens.toLocaleString()} SCHOLAR Tokens Sent</span>
+                  <span className="text-violet-500 text-xs">Transaction confirmed on-chain</span>
+                </div>
+                <TxHashLink txHash={rHash} label="View Transaction" />
+              </div>
+            ))}
+
+            {/* Reward error banners */}
             {Object.entries(rowErrors)
               .filter(([id]) => id.startsWith("reward_"))
               .map(([id, msg]) => (
@@ -348,6 +405,10 @@ export default function AdminDashboard() {
                 </div>
               ))}
           </div>
+        )}
+
+        {activeTab === "sponsors" && (
+          <SponsorTable sponsors={sponsors} loading={sponsorsLoading} />
         )}
 
         {activeTab === "treasury" && <TreasuryMintPanel />}

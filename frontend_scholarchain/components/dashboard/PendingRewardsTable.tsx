@@ -29,10 +29,8 @@ export default function PendingRewardsTable({
           <tr>
             <th className="px-4 py-3">Scholar</th>
             <th className="px-4 py-3">Course</th>
-            <th className="px-4 py-3">Subject</th>
-            <th className="px-4 py-3">Grade</th>
-            <th className="px-4 py-3">Proof</th>
-            <th className="px-4 py-3">Reward</th>
+            <th className="px-4 py-3">Proof of Achievement</th>
+            <th className="px-4 py-3">Send Reward</th>
           </tr>
         </thead>
         <tbody>
@@ -45,23 +43,26 @@ export default function PendingRewardsTable({
               <tr key={scholar.id} className="border-b border-gray-800 hover:bg-gray-900/50 transition-colors">
                 <td className="px-4 py-3 font-medium text-white">{scholar.name}</td>
                 <td className="px-4 py-3 text-gray-400 text-xs">{scholar.course}</td>
-                <td className="px-4 py-3 text-gray-300">{ach.subject}</td>
-                <td className="px-4 py-3 text-gray-300">{ach.grade}</td>
                 <td className="px-4 py-3">
-                  <a
-                    href={ach.proofLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 text-xs underline"
-                  >
-                    View
-                  </a>
+                  {ach.proofLink ? (
+                    <a
+                      href={ach.proofLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-300 bg-blue-500/10 border border-blue-500/25 hover:bg-blue-500/20 hover:text-blue-200 hover:border-blue-400/40 rounded-lg px-3 py-1.5 transition-all duration-150"
+                    >
+                      View Proof
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    </a>
+                  ) : (
+                    <span className="text-gray-600 text-xs italic">No link provided</span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   {isPaid ? (
                     <div className="flex items-center gap-2">
                       <span className="text-green-400 text-xs font-medium">Paid ✓</span>
-                      {ach.rewardTxHash && <TxHashLink txHash={ach.rewardTxHash} label="tx" />}
+                      {ach.rewardTxHash && <TxHashLink txHash={ach.rewardTxHash} label="View Tx" />}
                     </div>
                   ) : (
                     <RewardApprovalForm

@@ -113,22 +113,27 @@ export function normalizeToB32(address: string): string {
  */
 export async function getWalletAddressBech32(wallet: any): Promise<string> {
   try {
+    let raw = "";
+
     // Always prefer the change address — it is the wallet's current active signing key.
     // getUsedAddressesBech32()[0] is a historical receive address whose key may not be
     // the one the wallet extension signs with, causing native-script witness mismatches.
     if (typeof wallet.getChangeAddressBech32 === "function") {
-      return await wallet.getChangeAddressBech32();
-    }
-    if (typeof wallet.getChangeAddress === "function") {
-      return await wallet.getChangeAddress();
-    }
-    // Last-resort fallbacks
-    if (typeof wallet.getUsedAddressesBech32 === "function") {
+      raw = await wallet.getChangeAddressBech32();
+    } else if (typeof wallet.getChangeAddress === "function") {
+      raw = await wallet.getChangeAddress();
+    } else if (typeof wallet.getUsedAddressesBech32 === "function") {
       const addrs: string[] = await wallet.getUsedAddressesBech32();
-      if (addrs.length > 0) return addrs[0];
+      raw = addrs[0] ?? "";
+    } else {
+      const addrs: string[] = await wallet.getUsedAddresses();
+      raw = addrs[0] ?? "";
     }
-    const addrs: string[] = await wallet.getUsedAddresses();
-    return addrs[0] ?? "";
+
+    if (!raw) return "";
+    // CIP-30 wallets return hex — normalizeToB32 converts to bech32 when needed
+    // and is a no-op when the address is already addr_test1… or addr1…
+    return normalizeToB32(raw);
   } catch {
     return "";
   }
