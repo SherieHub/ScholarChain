@@ -1,12 +1,22 @@
 import { NextResponse } from "next/server";
 import { getAddressTransactions, getTransactionUtxos } from "@/lib/blockfrost/client";
 import { enrichTransactionsWithScholarData } from "@/lib/blockfrost/enrichTransactions";
+import { getUniversityConfig } from "@/lib/firebase/config-store";
 import type { TransactionSummary } from "@/types";
 
+async function resolveAdminAddress(): Promise<string | null> {
+  try {
+    const config = await getUniversityConfig();
+    const addr = config.adminWalletAddresses?.[0]?.trim();
+    if (addr) return addr;
+  } catch { /* fall through to env fallback */ }
+  return process.env.ADMIN_WALLET_ADDRESS ?? null;
+}
+
 export async function GET() {
-  const adminAddress = process.env.ADMIN_WALLET_ADDRESS;
+  const adminAddress = await resolveAdminAddress();
   if (!adminAddress) {
-    return NextResponse.json({ error: "ADMIN_WALLET_ADDRESS not configured." }, { status: 500 });
+    return NextResponse.json({ error: "Admin wallet address not configured in Firestore or ADMIN_WALLET_ADDRESS env." }, { status: 500 });
   }
 
   try {
