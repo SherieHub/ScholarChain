@@ -70,7 +70,6 @@ export default function AdminDashboard() {
   const [achievementRewardSuccesses, setAchievementRewardSuccesses] = useState<Record<string, { txHash: string; tokens: number }>>({});
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [sponsorsLoading, setSponsorsLoading] = useState(false);
-  // scholarId → current-semester scholarship record
   const [scholarshipMap, setScholarshipMap] = useState<Map<string, Scholarship>>(new Map());
 
   const loadScholarships = useCallback(async () => {
